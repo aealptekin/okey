@@ -1029,6 +1029,10 @@
             const r = confirm('Odanız: ' + roomCode + '\n\nYeniden başlatmak ister misiniz?');
             if (r) location.reload();
         }
+        // Initialize PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
     </script>
 </body>
 </html>
