@@ -237,7 +237,6 @@
 
     <div class="connection-bar" id="connBar"></div>
 
-    <!-- Giriş -->
     <div class="modal active" id="loginModal">
         <div class="modal-box">
             <h2>🎴 Okey Pro</h2>
@@ -248,7 +247,6 @@
         </div>
     </div>
 
-    <!-- Oyun Sonu -->
     <div class="game-over" id="gameOver">
         <h1>👑 Kazanan!</h1>
         <div class="finish-reason" id="finishReason"></div>
@@ -258,7 +256,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- Ana Oyun -->
     <div class="nav">
         <h1>🎴 Okey Pro</h1>
         <span class="room-code" id="roomCode" onclick="copyRoomCode()">-</span>
@@ -268,14 +265,12 @@
     <div class="players" id="players"></div>
 
     <div class="game-scroll" id="gameScroll">
-        <!-- Zar -->
         <div class="dice-section" id="diceSection">
             <div style="color:#aaa;font-size:14px;">Gösterge için zara dokun (2 kez)</div>
             <div class="dice" id="dice" onclick="rollDice()">🎲</div>
             <div id="diceInfo" style="color:#888;font-size:12px;"></div>
         </div>
 
-        <!-- Oyun Masası -->
         <div class="table" id="table" style="display:none;">
             <div class="piles-row">
                 <div class="pile-wrap">
@@ -326,7 +321,6 @@
         <div class="rack" id="rack"></div>
     </div>
 
-    <!-- Sohbet -->
     <div class="chat-section">
         <div class="chat-messages" id="chatBox"></div>
         <div class="chat-input">
@@ -368,6 +362,25 @@
             });
             peer.on('disconnected', () => updateConnectionStatus('connecting'));
             peer.on('error', () => updateConnectionStatus('offline'));
+
+            // TÜM BAĞLANTILARI BURADA DİNLİYORUZ (Race Condition ve kopmaları önlemek için)
+            peer.on('connection', conn => {
+                conn.on('open', () => {
+                    connections.set(conn.peer, conn);
+                    conn.on('data', data => handleNetworkData(data, conn.peer));
+                });
+                conn.on('close', () => {
+                    connections.delete(conn.peer);
+                    if (isHost) {
+                        const p = gameState.players.find(x => x.id === conn.peer);
+                        if (p) { 
+                            p.online = false; 
+                            broadcastPlayers(); 
+                            addChat('Sistem', p.name + ' ayrıldı.'); 
+                        }
+                    }
+                });
+            });
         }
         init();
 
@@ -389,25 +402,6 @@
             document.getElementById('roomCode').innerText = roomCode;
             document.getElementById('diceSection').style.display = 'flex';
             
-            peer.on('connection', conn => {
-                conn.on('open', () => {
-                    connections.set(conn.peer, conn);
-                    conn.on('data', data => handleNetworkData(data, conn.peer));
-                    
-                    // Yeni gelene tüm durumu gönder
-                    if (isHost) {
-                        conn.send({type: 'fullState', state: gameState, yourId: conn.peer});
-                    }
-                });
-                conn.on('close', () => {
-                    connections.delete(conn.peer);
-                    if (isHost) {
-                        const p = gameState.players.find(x => x.id === conn.peer);
-                        if (p) { p.online = false; broadcastPlayers(); }
-                    }
-                });
-            });
-            
             addChat('Sistem', 'Oda kuruldu. Kod: ' + roomCode);
         }
 
@@ -420,8 +414,8 @@
             const conn = peer.connect(targetId, {reliable: true});
             
             conn.on('open', () => {
-                myId = peer.id;
                 connections.set(targetId, conn);
+                // Katılma isteğini Kurucuya (Host) ilet
                 conn.send({type: 'join', name: myName, id: myId});
                 conn.on('data', data => handleNetworkData(data, targetId));
                 
@@ -430,6 +424,10 @@
                 addChat('Sistem', 'Odaya katılındı. Başlatılması bekleniyor...');
             });
             
+            conn.on('close', () => {
+                showToast('Kurucu ile bağlantı koptu!');
+                updateConnectionStatus('offline');
+            });
             conn.on('error', () => showToast('Bağlantı hatası!'));
         }
 
@@ -452,7 +450,20 @@
             switch(data.type) {
                 case 'join':
                     if (isHost) {
-                        addPlayer(data.id, data.name);
+                        // Eğer aynı id ile düşüp yeniden gelmişse kontrol et
+                        let existingPlayer = gameState.players.find(p => p.id === data.id);
+                        if (existingPlayer) {
+                            existingPlayer.online = true;
+                            existingPlayer.name = data.name;
+                        } else {
+                            addPlayer(data.id, data.name);
+                        }
+                        
+                        // Sadece bağlanan kişiye mevcut tüm masayı gönder (Senkronizasyon)
+                        const newConn = connections.get(data.id);
+                        if (newConn) newConn.send({type: 'fullState', state: gameState, yourId: data.id});
+                        
+                        // Herkese yeni oyuncu listesini yayınla
                         broadcastPlayers();
                         addChat('Sistem', data.name + ' odaya katıldı');
                     }
@@ -460,13 +471,20 @@
                     
                 case 'fullState':
                     gameState = data.state;
-                    myId = data.yourId;
-                    renderPlayers();
+                    myId = data.yourId; // Host'un bize tanıdığı id
+                    
+                    // Oyundan düşüp geri geldiysek taşlarımızı yükleyelim
                     if (gameState.started) {
+                        const me = gameState.players.find(p => p.id === myId);
+                        if (me && me.tiles) {
+                            myHand = me.tiles;
+                            renderHand();
+                        }
                         document.getElementById('diceSection').style.display = 'none';
                         document.getElementById('table').style.display = 'flex';
                         updateTable();
                     }
+                    renderPlayers();
                     break;
                     
                 case 'players':
@@ -476,6 +494,12 @@
                     
                 case 'chat':
                     addChat(data.name, data.text, data.audio);
+                    // Düzeltme: Host, mesajı aldıktan sonra diğer herkese de iletmelidir (Relay)
+                    if (isHost) {
+                        connections.forEach((c, id) => {
+                            if (id !== from && c.open) c.send(data);
+                        });
+                    }
                     break;
                     
                 case 'action':
@@ -485,6 +509,12 @@
                 case 'stateUpdate':
                     gameState = data.state;
                     updateUI();
+                    // Düzeltme: Bir client oyun durumunu güncellediğinde, Host bunu diğer herkese de yaymalıdır.
+                    if (isHost) {
+                        connections.forEach((c, id) => {
+                            if (id !== from && c.open) c.send({type: 'stateUpdate', state: gameState});
+                        });
+                    }
                     break;
                     
                 case 'yourHand':
@@ -591,7 +621,7 @@
             hasDrawn = true;
             
             if (isHost) {
-                gameState.players[0].tiles = myHand;
+                getMyPlayer().tiles = myHand; 
                 broadcast({type: 'stateUpdate', state: gameState});
             } else {
                 sendAction('drawDeck', {});
@@ -629,7 +659,6 @@
             gameState.discardPile.push(tile);
             selectedTiles.clear();
             
-            // Sıra kontrolü
             const me = getMyPlayer();
             me.tiles = myHand;
             
@@ -685,11 +714,9 @@
             const tiles = Array.from(selectedTiles).map(i => myHand[i]);
             
             if (isValidPer(tiles)) {
-                // Taşları elden çıkar
                 const indices = Array.from(selectedTiles).sort((a,b) => b-a);
                 indices.forEach(i => myHand.splice(i, 1));
                 
-                // Pere ekle
                 gameState.openPers.push(tiles);
                 getMyPlayer().hasOpened = true;
                 
@@ -706,25 +733,19 @@
         function isValidPer(tiles) {
             if (tiles.length < 3) return false;
             
-            // Sahte okey kontrolü
             const realTiles = tiles.filter(t => !t.isFake);
             const fakeCount = tiles.filter(t => t.isFake).length;
             if (fakeCount > 1) return false;
             
-            // Aynı sayı farklı renk kontrolü
             if (realTiles.every(t => t.num === realTiles[0].num)) {
                 const colors = new Set(realTiles.map(t => t.color));
                 return colors.size === realTiles.length && realTiles.length + fakeCount >= 3;
             }
             
-            // Aynı renk sıralı kontrolü
             if (realTiles.every(t => t.color === realTiles[0].color)) {
                 const nums = realTiles.map(t => t.num).sort((a,b) => a-b);
                 for (let i = 1; i < nums.length; i++) {
-                    if (nums[i] !== nums[i-1] + 1) {
-                        // 12-13-1 kontrolü (opsiyonel, standart okeyde yoktur ama eklenebilir)
-                        return false;
-                    }
+                    if (nums[i] !== nums[i-1] + 1) return false;
                 }
                 return true;
             }
@@ -748,7 +769,6 @@
                 return showToast('Önce per açmalısınız!');
             }
             
-            // Çift kontrolü
             if (gameState.doubleMode) {
                 if (!checkDoubleWin()) return showToast('7 çift toplamadınız!');
             }
@@ -758,29 +778,25 @@
         }
 
         function checkDoubleWin() {
-            // Çift sayısı kontrolü (basit implementasyon)
             const counts = {};
             myHand.forEach(t => {
                 const key = t.color + '-' + t.num;
                 counts[key] = (counts[key] || 0) + 1;
             });
             const pairs = Object.values(counts).filter(c => c === 2).length;
-            return pairs >= 7; // 7 çift
+            return pairs >= 7; 
         }
 
         function endGame(winnerId, type) {
             const winner = gameState.players.find(p => p.id === winnerId);
             if (!winner) return;
             
-            // Puan hesaplama
             let points = type === 'double' ? 4 : 2;
-            // Okey ile bitiş kontrolü (son taş okey mi?)
             const lastTile = myHand[0];
             if (lastTile && isOkeyTile(lastTile)) points *= 2;
             
             winner.score += points;
             
-            // Ceza hesaplama (diğer oyuncular)
             gameState.players.forEach(p => {
                 if (p.id !== winnerId) {
                     let penalty = type === 'double' ? 4 : 2;
@@ -789,12 +805,10 @@
                 }
             });
             
-            // Ekranı göster
             document.getElementById('gameOver').classList.add('active');
             document.getElementById('finishReason').innerText = 
                 type === 'double' ? 'Çiftten Bitiş! +' + points + ' puan' : 'Normal Bitiş +' + points + ' puan';
             
-            // Skor tablosu
             const sorted = [...gameState.players].sort((a,b) => b.score - a.score);
             document.getElementById('scoreBoard').innerHTML = sorted.map(p => `
                 <div class="score-row ${p.id === winnerId ? 'winner' : ''}">
@@ -803,7 +817,6 @@
                 </div>
             `).join('');
             
-            // Konfeti
             confetti({particleCount: 150, spread: 70, origin: {y: 0.6}, colors: ['#ffd700', '#ff6b6b', '#00e676']});
             broadcast({type: 'stateUpdate', state: gameState});
         }
@@ -881,7 +894,7 @@
                             mediaRecorder.stop();
                             btn.classList.remove('recording');
                         }
-                    }, 5000); // Max 5 saniye
+                    }, 5000); 
                 } catch(e) {
                     showToast('Mikrofon izni gerekli!');
                 }
@@ -904,7 +917,7 @@
         }
 
         function isOkeyTile(tile) {
-            if (tile.isFake) return true; // Sahte okey her zaman okeydir
+            if (tile.isFake) return true; 
             return tile.color === gameState.okeyTile.color && tile.num === gameState.okeyTile.num;
         }
 
@@ -913,7 +926,6 @@
             return names[c] || c;
         }
 
-        // UI Güncellemeleri
         function updateUI() {
             renderPlayers();
             updateTable();
@@ -992,8 +1004,6 @@
         }
 
         function sortSmart() {
-            // Basit akıllı sıralama: Önce seri olabilecekleri grupla
-            // (Gerçek implementasyonda daha karmaşık olabilir)
             sortByColor();
             showToast('Akıllı sıralama uygulandı');
         }
@@ -1016,7 +1026,6 @@
         }
 
         function toggleMenu() {
-            // Basit toggle - geliştirilebilir
             const r = confirm('Odanız: ' + roomCode + '\n\nYeniden başlatmak ister misiniz?');
             if (r) location.reload();
         }
