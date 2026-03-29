@@ -31,26 +31,13 @@
         [data-rack="dark"] { --rack: linear-gradient(180deg, #2a2a2a 0%, #111 100%); }
         [data-rack="light"] { --rack: linear-gradient(180deg, #d4a373 0%, #faedcd 100%); }
         
-        body { 
-            background: var(--bg); 
-            color: white; 
-            height: 100dvh; /* Dynamic viewport height */
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; 
-            overscroll-behavior: none;
-            /* iPhone Notch/Safe Area Desteği */
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-left: env(safe-area-inset-left);
-            padding-right: env(safe-area-inset-right);
-        }
+        body { background: var(--bg); color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: none; }
 
         .connection-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--success); z-index: 9999; }
         .connection-bar.offline { background: var(--danger); }
         .connection-bar.connecting { background: var(--primary); animation: pulse 1s infinite; }
         
-        .top-bar { position: absolute; top: env(safe-area-inset-top); left: 0; right: 0; display: flex; justify-content: space-between; padding: 8px 15px; z-index: 500; background: rgba(0,0,0,0.3); pointer-events: none; }
+        .top-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 8px 15px; z-index: 500; background: rgba(0,0,0,0.3); pointer-events: none; }
         .top-bar > * { pointer-events: auto; }
         .top-bar h1 { font-size: 14px; color: var(--primary); margin: 0; text-shadow: 1px 1px 2px black; }
         .menu-btn { background: none; border: none; color: white; font-size: 20px; font-weight: bold; cursor: pointer; text-shadow: 1px 1px 2px black; }
@@ -61,14 +48,13 @@
         .dropdown button:hover { background: rgba(255,255,255,0.1); }
         .menu-input { width: 40px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555; border-radius: 4px; text-align: center; font-weight: bold;}
 
-        .sys-chat-top { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 4px; z-index: 9999; pointer-events: none; }
-        .sys-chat-line { background: rgba(0,0,0,0.8); color: var(--primary); padding: 6px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; text-align: center; animation: fadeInOut 4s forwards; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-left: 3px solid var(--primary);}
+        .sys-chat-top { position: absolute; top: 45px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 4px; z-index: 9999; pointer-events: none; }
+        .sys-chat-line { background: rgba(0,0,0,0.8); color: var(--primary); padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; text-align: center; animation: fadeInOut 4s forwards; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-left: 3px solid var(--primary);}
         @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(-5px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-10px); } }
 
-        /* Masa Alanı - iPhone Dikey modda sığması için 1.5fr yerine 1.2fr yaptık */
-        .table-area { flex: 1; background: var(--table); position: relative; display: grid; grid-template-columns: 1fr 1.2fr 1fr; grid-template-rows: 1fr 1.2fr 1fr; padding: 5px; margin-top: 20px; }
+        .table-area { flex: 1; background: var(--table); position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1.5fr 1fr; padding: 10px; margin-top: 30px; }
         
-        .center-zone { grid-column: 2; grid-row: 2; display: flex; justify-content: center; align-items: center; gap: 10px; position: relative; }
+        .center-zone { grid-column: 2; grid-row: 2; display: flex; justify-content: center; align-items: center; gap: 20px; position: relative; }
         
         .edge-top { grid-column: 2; grid-row: 1; display: flex; justify-content: center; align-items: flex-start; }
         .edge-bottom { grid-column: 2; grid-row: 3; display: flex; justify-content: center; align-items: flex-end; }
@@ -80,85 +66,109 @@
         .corner-bl { grid-column: 1; grid-row: 3; display: flex; justify-content: center; align-items: center; } 
         .corner-br { grid-column: 3; grid-row: 3; display: flex; justify-content: center; align-items: center; } 
         
-        .avatar-box { background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 8px; text-align: center; border: 2px solid #555; color: white; display: flex; flex-direction: column; align-items: center; min-width: 65px; position: relative;}
+        .avatar-box { background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 8px; text-align: center; border: 2px solid #555; color: white; display: flex; flex-direction: column; align-items: center; min-width: 80px; position: relative;}
         .avatar-box.active { border-color: var(--success); box-shadow: 0 0 10px var(--success); }
-        .avatar-box .name { font-size: 11px; font-weight: bold; color: var(--primary); margin-bottom: 2px;}
-        .avatar-box .score { font-size: 10px; font-weight: bold; color: white; }
+        .avatar-box .name { font-size: 13px; font-weight: bold; color: var(--primary); margin-bottom: 4px;}
+        .avatar-box .score { font-size: 12px; font-weight: bold; color: white; }
         
-        .kick-btn { position: absolute; top: -8px; right: -8px; background: var(--danger); color: white; border: 1px solid white; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; cursor: pointer; font-weight: bold; z-index: 10;}
-        .turn-timer { position: absolute; top: -8px; left: -8px; background: var(--primary); color: #000; border: 1px solid white; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10;}
+        .kick-btn { position: absolute; top: -10px; right: -10px; background: var(--danger); color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10;}
+        .turn-timer { position: absolute; top: -10px; left: -10px; background: var(--primary); color: #000; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10;}
 
-        /* Atılan taşların kutuları telefonda daha küçük olmalı */
-        .discard-pile { width: 10vw; height: 14vw; max-width: 45px; max-height: 65px; background: rgba(0,0,0,0.3); border: 2px dashed rgba(255,255,255,0.2); border-radius: 6px; display: flex; justify-content: center; align-items: center; z-index: 200; position: relative; color: white; font-size: 10px;}
+        .discard-pile { width: 5.5vw; height: 8vw; min-width: 45px; min-height: 65px; background: rgba(0,0,0,0.3); border: 2px dashed rgba(255,255,255,0.2); border-radius: 6px; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); z-index: 200; position: relative; color: white; font-size: 11px; font-weight: bold; text-align: center;}
+        .discard-pile.can-draw { cursor: pointer; border-color: var(--success); box-shadow: 0 0 12px rgba(138, 201, 38, 0.8); pointer-events: auto; animation: pulseGlow 1.5s infinite;} 
+        @keyframes pulseGlow { 0% { box-shadow: 0 0 5px var(--success); } 50% { box-shadow: 0 0 15px var(--success); } 100% { box-shadow: 0 0 5px var(--success); } }
         
-        .my-discard-zone { border-color: #777; background: rgba(0, 0, 0, 0.5); cursor: default;}
+        .my-discard-zone { border-color: #777; background: rgba(0, 0, 0, 0.5); cursor: default; pointer-events: auto;}
         .my-discard-zone.active { background: rgba(255, 0, 0, 0.2); border-color: var(--danger); cursor: pointer;}
 
-        .center-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .pile { width: 12vw; height: 17vw; max-width: 42px; max-height: 62px; background: var(--tile); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); flex-direction: column; position: relative;}
+        .center-item { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .pile { width: 6.5vw; height: 9.5vw; min-width: 42px; min-height: 62px; background: var(--tile); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); cursor: pointer; flex-direction: column; position: relative;}
         
+        /* YENİ GERÇEKÇİ 3D DESTE KULESİ */
         .pile.deck { 
-            background: #f0eadd; border: 1px solid #ccc; 
-            box-shadow: -1px -1px 0 #999, -2px -2px 0 #fff, -3px -3px 0 #999, -4px -4px 8px rgba(0,0,0,0.6);
+            background: #f0eadd; 
+            border: 1px solid #ccc; 
+            /* 3 Boyutlu Taş Destesi Hissiyatı İçin Katmanlı Gölge */
+            box-shadow: 
+                -1px -1px 0 #999, -2px -2px 0 #fff,
+                -3px -3px 0 #999, -4px -4px 0 #fff,
+                -5px -5px 0 #999, -6px -6px 0 #fff,
+                -8px -8px 8px rgba(0,0,0,0.6);
         }
-        .pile.deck::after { content: "Okey"; color: rgba(0,0,0,0.1); font-size: 10px; font-weight: 900; transform: rotate(-45deg); position: absolute; }
+        .pile.deck::after { 
+            content: "Okey"; 
+            color: rgba(0,0,0,0.2); 
+            font-size: 16px; 
+            font-weight: 900; 
+            letter-spacing: 2px;
+            transform: rotate(-45deg); 
+            position: absolute; 
+        }
         
-        .pile.indicator { border: 2px solid var(--primary); }
+        .pile.indicator { border: 2px solid var(--primary); cursor: default; }
         .pile.indicator.dropzone { border-color: var(--success); box-shadow: 0 0 15px var(--success); } 
-        .deck-count { font-size: 10px; color: #aaa; font-weight: bold;}
+        .deck-count { font-size: 11px; color: #aaa; text-shadow: 1px 1px 1px black; font-weight: bold;}
 
         .dice-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 200; border-radius: 15px;}
         .dice-overlay.active { display: flex; }
-        .dice-box { background: var(--menu-bg); padding: 15px; border-radius: 15px; text-align: center; border: 2px solid var(--accent); max-width: 90%;}
+        .dice-box { background: var(--menu-bg); padding: 20px; border-radius: 15px; text-align: center; border: 2px solid var(--accent); max-width: 80%;}
         
-        .dice-icon { cursor: pointer; display: inline-block; transition: transform 0.2s; margin-top: 5px; }
+        /* YENİ SVG ZAR ALANI EFEKTLERİ */
+        .dice-icon { cursor: pointer; display: inline-block; transition: transform 0.2s; margin-top: 10px; border-radius: 15px; }
         .dice-icon.rolling { animation: syncRoll 0.4s ease-in-out infinite alternate; }
+        @keyframes syncRoll { 0% { transform: scale(1) rotate(0deg); } 100% { transform: scale(1.3) rotate(360deg); } }
 
-        .bottom-area { background: rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 2px; flex-shrink: 0; z-index: 300; border-top: 1px solid rgba(255,255,255,0.1); width: 100vw; }
+        .bottom-area { background: rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 5px; flex-shrink: 0; z-index: 300; border-top: 1px solid rgba(255,255,255,0.1); width: 100vw; box-sizing: border-box;}
         
-        .player-chat-box { width: 100%; max-height: 3em; height: 3em; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 10px;}
-        .p-chat-line { font-size: 10px; color: white; line-height: 1.4em; }
+        .player-chat-box { width: 100%; max-height: 4.5em; height: 4.5em; overflow-y: hidden; display: flex; flex-direction: column; justify-content: flex-end; margin-bottom: 5px; padding: 0 5px;}
+        .p-chat-line { font-size: 12px; color: white; line-height: 1.5em; text-shadow: 1px 1px 2px black; animation: fadeIn 0.2s; word-wrap: break-word;}
+        .p-chat-line audio { height: 24px; width: 180px; outline: none; vertical-align: middle; }
 
-        .action-bar { display: flex; justify-content: space-between; align-items: center; padding: 2px 5px; gap: 5px; }
-        .chat-input-row { display: flex; flex: 1; gap: 4px; background: rgba(0,0,0,0.4); border-radius: 15px; padding: 2px; max-width: 150px;}
-        .chat-input-row input { flex: 1; background: transparent; border: none; color: white; padding: 4px 6px; font-size: 11px; outline: none; width: 100%;}
-        .mini-btn { background: var(--primary); color: #000; border: none; width: 24px; height: 24px; border-radius: 50%; font-weight: bold; display: flex; justify-content: center; align-items: center;}
+        .action-bar { display: flex; justify-content: space-between; align-items: center; gap: 5px; margin-bottom: 5px; }
+        .chat-input-row { display: flex; flex: 1; gap: 5px; background: rgba(0,0,0,0.4); border-radius: 15px; padding: 2px; max-width: 180px;}
+        .chat-input-row input { flex: 1; background: transparent; border: none; color: white; padding: 5px 8px; font-size: 12px; outline: none; width: 100%;}
+        .mini-btn { background: var(--primary); color: #000; border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0;}
+        .mini-btn.recording { background: var(--danger); color: white; animation: pulse 1s infinite; }
         
-        .controls { display: flex; gap: 3px; flex: 2; justify-content: flex-end;}
-        .btn { padding: 5px 6px; border-radius: 6px; font-size: 10px; font-weight: bold; color: white; background: #444; border: none; }
-        .btn-double.active { background: #e91e63; }
+        .controls { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; flex: 2;}
+        .btn { padding: 6px 8px; border: none; border-radius: 8px; font-size: 11px; font-weight: bold; color: white; background: #444; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.3);}
+        .btn-hint { background: #17a2b8; } 
+        .btn-double { background: #9b59b6; }
+        .btn-double.active { background: #e91e63; box-shadow: 0 0 10px rgba(233,30,99,0.5); }
 
-        .rack-wrapper { display: flex; align-items: flex-end; justify-content: center; width: 100%; padding: 0 2px 2px 2px;}
-        .rack { background: var(--rack); border-radius: 6px 6px 0 0; padding: 3px; border-top: 2px solid rgba(255,255,255,0.2); display: flex; flex-direction: column; gap: 2px; width: 100%; max-width: 100%; }
-        .rack-row { display: flex; justify-content: space-between; width: 100%; gap: 1px; }
-        .slot { flex: 1; aspect-ratio: 2.2 / 3.2; background: rgba(0,0,0,0.25); border-radius: 4px; position: relative; overflow: hidden;}
+        .rack-wrapper { display: flex; align-items: flex-end; justify-content: center; width: 100%; box-sizing: border-box; padding: 0 5px;}
+
+        .rack { background: var(--rack); border-radius: 8px 8px 0 0; padding: 6px; border-top: 3px solid rgba(255,255,255,0.2); box-shadow: inset 0 10px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 2px; position: relative; width: 100%; max-width: 800px; }
+        .rack-row { display: flex; justify-content: space-between; width: 100%; gap: 2px; }
+        .slot { flex: 1; aspect-ratio: 2.2 / 3.2; background: rgba(0,0,0,0.25); border-radius: 5px; border: 1px solid rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; box-shadow: inset 1px 1px 3px rgba(0,0,0,0.6); position: relative; overflow: hidden;}
         
-        /* Taş Boyutları iPhone Dikey İçin Optimize Edildi */
-        .tile { 
-            width: 100%; height: 100%; background: var(--tile); border-radius: 3px; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: clamp(10px, 3.5vw, 20px); font-weight: 900; 
-            color: #111; box-shadow: 1px 1px 2px rgba(0,0,0,0.6); 
-            border: 1px solid #fff; position: absolute; z-index: 5; 
-        }
-        .tile.selected { border: 2px solid var(--primary); transform: translateY(-3px); }
-        .tile.useless { border: 2px solid var(--danger); animation: shake 0.5s infinite;} 
+        .tile { width: 100%; height: 100%; background: var(--tile); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: clamp(14px, 4vw, 24px); font-weight: 900; color: #111; box-shadow: 1px 2px 4px rgba(0,0,0,0.6); border: 1px solid #fff; cursor: grab; position: absolute; z-index: 5; transition: border 0.2s;}
+        .tile:active { cursor: grabbing; z-index: 100; transform: scale(1.1); box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .tile.selected { border: 3px solid var(--primary); transform: translateY(-5px); }
+        .tile.useless { border: 3px solid var(--danger); animation: shake 0.5s infinite;} 
         .tile.red { color: #d62828; } .tile.blue { color: #003049; } .tile.black { color: #000000; } .tile.yellow { color: #f77f00; }
-        .tile.fake { color: #38b000; font-size: clamp(8px, 3vw, 14px); } .tile.fake::after { content: "★"; font-size: clamp(10px, 3.5vw, 18px); }
+        .tile.fake { color: #38b000; font-size: clamp(10px, 3vw, 18px); } .tile.fake::after { content: "★"; font-size: clamp(14px, 4vw, 24px); }
 
-        /* Oyun Sonu ve Skor Ekranı Ayarları */
-        .modal-box { background: var(--bg); padding: 15px; border-radius: 15px; width: 95%; max-width: 320px; border: 1px solid #555; }
-        .modal-box h2 { font-size: 18px; color: var(--primary); margin-bottom: 10px; }
-        .winner-rack { display: flex; flex-direction: column; gap: 2px; background: var(--rack); padding: 4px; border-radius: 6px; margin: 10px 0; width: 100%; }
-        .winner-rack-row { display: flex; justify-content: space-between; height: 28px; }
-        .mini-slot .tile { font-size: 12px; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+        .ghost-tile { position: fixed; pointer-events: none; z-index: 9999; opacity: 0.9; transform: scale(1.1); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; flex-direction: column; }
+        .modal-box { background: var(--bg); padding: 25px; border-radius: 15px; width: 100%; max-width: 320px; border: 1px solid #555; text-align: center; }
+        .modal-box h2 { color: var(--primary); margin-bottom: 15px; }
+        .modal-box input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: inherit; font-size: 14px; text-align: center;}
+        .modal-box button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: #000; }
         
-        .score-board { width: 100%; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 8px; margin-bottom: 15px; }
-        .score-row { font-size: 12px; padding: 6px; display: flex; justify-content: space-between; }
-        .finish-reason { font-size: 13px; margin-top: 5px; }
+        .winner-rack { display: flex; flex-direction: column; gap: 3px; background: var(--rack); padding: 8px; border-radius: 8px; margin: 15px 0; width: 100%; max-width: 360px; border: 2px solid var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.8);}
+        .winner-rack-row { display: flex; justify-content: space-between; height: 35px; }
+        .winner-rack-row .mini-slot { flex: 1; border: 1px solid rgba(0,0,0,0.5); border-radius: 3px; background: rgba(0,0,0,0.3); position: relative; margin: 0 1px; display: flex; justify-content: center; align-items: center;}
+        .mini-slot .tile { font-size: 16px; border-width: 1px; border-radius: 3px; position: static;}
+        .mini-slot .tile.fake { font-size: 10px; }
         
-        @keyframes syncRoll { 0% { transform: scale(1); } 100% { transform: scale(1.2); } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-1px); } 75% { transform: translateX(1px); } }
+        .score-board { width: 100%; max-width: 360px; background: rgba(255,255,255,0.05); border-radius: 15px; padding: 15px; margin-bottom: 20px; color: white;}
+        .score-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .score-row.winner { background: rgba(0,230,118,0.15); border-radius: 8px; border-left: 3px solid var(--success); }
+        .finish-reason { text-align: center; color: #ccc; font-size: 16px; margin-top: 5px; font-weight: bold;}
     </style>
 </head>
 <body>
