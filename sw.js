@@ -1,57 +1,54 @@
 const CACHE_NAME = 'okey-pro-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js',
-  'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js'
+const ASSETS_TO_CACHE = [
+    './',
+    './index.html',
+    './manifest.json',
+    './icon-192.png',
+    './icon-512.png'
 ];
 
-// Base64 ikonlar (gerçek PNG yerine - siz PNG dosyalarını aynı dizine koyun)
-const ICON_192 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAACXBIWXMAABYlAAAWJQFJOUtwAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAA...';
-const ICON_512 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAACXBIWXMAABYlAAAWJQFJOUtwAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAA...';
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
-  );
-  self.skipWaiting();
+// Kurulum (Install) Aşaması - Dosyaları önbelleğe al
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => {
+                console.log('Service Worker: Dosyalar önbelleğe alınıyor');
+                return cache.addAll(ASSETS_TO_CACHE);
+            })
+    );
 });
 
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) return response;
-        
-        return fetch(event.request).then((response) => {
-          // Check if we received a valid response
-          if(!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-          return response;
-        });
-      })
-  );
-});
-
-self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
+// Aktivasyon (Activate) Aşaması - Eski önbellekleri temizle
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cache => {
+                    if (cache !== CACHE_NAME) {
+                        console.log('Service Worker: Eski önbellek siliniyor', cache);
+                        return caches.delete(cache);
+                    }
+                })
+            );
         })
-      );
-    })
-  );
+    );
+});
+
+// Ağ İsteklerini Yakalama (Fetch) - Önce önbellek, yoksa ağ
+self.addEventListener('fetch', event => {
+    // CDN bağlantılarını (PeerJS vb.) önbelleğe almaya çalışmaması için filtre
+    if (!event.request.url.startsWith('http')) return;
+
+    event.respondWith(
+        caches.match(event.request)
+            .then(response => {
+                // Önbellekte varsa onu döndür, yoksa ağdan çek
+                return response || fetch(event.request).catch(() => {
+                    // Çevrimdışıysa ve istek atılamıyorsa ana sayfayı göster
+                    if(event.request.mode === 'navigate') {
+                        return caches.match('./index.html');
+                    }
+                });
+            })
+    );
 });
