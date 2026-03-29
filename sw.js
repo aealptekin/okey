@@ -1,10 +1,11 @@
 const CACHE_NAME = 'okey-pro-v1';
 const ASSETS_TO_CACHE = [
     './',
-    './index.html',
-    './manifest.json',
-    './icon-192.png',
-    './icon-512.png'
+    'index.html',
+    'manifest.json',
+    'sw.js',
+    'icon-192.png',
+    'icon-512.png'
 ];
 
 // Kurulum (Install) Aşaması - Dosyaları önbelleğe al
@@ -46,7 +47,7 @@ self.addEventListener('fetch', event => {
                 return response || fetch(event.request).catch(() => {
                     // Çevrimdışıysa ve istek atılamıyorsa ana sayfayı göster
                     if(event.request.mode === 'navigate') {
-                        return caches.match('./index.html');
+                        return caches.match('/') || caches.match('index.html');
                     }
                 });
             })

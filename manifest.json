@@ -2,7 +2,7 @@
   "name": "Alptekin Okey Pro",
   "short_name": "Okey Pro",
   "description": "Profesyonel Okey Oyunu",
-  "start_url": "/",
+  "start_url": "index.html?launcher=true",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#1a1a2e",
