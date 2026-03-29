@@ -2,1037 +2,893 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1a1a2e">
-    <title>Alptekin Okey Pro - Süper Okey</title>
+    <title>Alptekin Okey</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; touch-action: manipulation; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; user-select: none; touch-action: none; }
         
         :root { 
-            --bg: #1a1a2e; --card: #16213e; --primary: #e94560; 
-            --accent: #ffd700; --success: #00e676; --danger: #ff3b30;
-            --board: linear-gradient(180deg, #1e3c72 0%, #2a5298 100%);
-            --tile: linear-gradient(135deg, #fffdf0, #e6e4d5);
+            --bg: #1a1a2e; 
+            --table: radial-gradient(circle, #1e3c72 0%, #0f1e38 100%);
+            --primary: #ffb703; --accent: #fb8500; --success: #8ac926; --danger: #ff595e;
+            --tile: linear-gradient(180deg, #ffffff 0%, #f0eadd 100%);
+            --rack: linear-gradient(180deg, #5c3a21 0%, #3e2716 100%);
+            --menu-bg: rgba(26, 26, 46, 0.95);
         }
+
+        [data-theme="light"] { --bg: #f0f2f5; --menu-bg: rgba(255, 255, 255, 0.95); color: #111; }
+        [data-table="blue"] { --table: radial-gradient(circle, #1e3c72 0%, #0f1e38 100%); }
+        [data-table="green"] { --table: radial-gradient(circle, #2b8b3b 0%, #154d1e 100%); }
+        [data-table="red"] { --table: radial-gradient(circle, #8b2b2b 0%, #4d1515 100%); }
         
-        body { background: var(--bg); color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        [data-rack="wood"] { --rack: linear-gradient(180deg, #5c3a21 0%, #3e2716 100%); }
+        [data-rack="dark"] { --rack: linear-gradient(180deg, #2a2a2a 0%, #111 100%); }
+        [data-rack="light"] { --rack: linear-gradient(180deg, #d4a373 0%, #faedcd 100%); }
         
-        /* BAĞLANTI DURUMU */
-        .connection-bar { 
-            position: fixed; top: 0; left: 0; right: 0; height: 4px; background: var(--success); z-index: 9999; transition: 0.3s;
-        }
+        body { background: var(--bg); color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: none; }
+
+        .connection-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--success); z-index: 9999; }
         .connection-bar.offline { background: var(--danger); }
-        .connection-bar.connecting { background: orange; animation: pulse 1s infinite; }
+        .connection-bar.connecting { background: var(--primary); animation: pulse 1s infinite; }
         
-        /* NAVBAR */
-        .nav { 
-            display: flex; justify-content: space-between; align-items: center; 
-            padding: 8px 12px; background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-top: 4px; flex-shrink: 0;
-        }
-        .nav h1 { font-size: 16px; color: var(--accent); }
-        .room-code { 
-            font-size: 11px; background: rgba(255,215,0,0.15); color: var(--accent); 
-            padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(255,215,0,0.3);
-        }
-
-        /* OYUNCULAR */
-        .players { 
-            display: flex; gap: 8px; padding: 8px; overflow-x: auto; 
-            background: rgba(0,0,0,0.2); flex-shrink: 0;
-        }
-        .players::-webkit-scrollbar { display: none; }
+        .top-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 8px 15px; z-index: 500; background: rgba(0,0,0,0.3); pointer-events: none; }
+        .top-bar > * { pointer-events: auto; }
+        .top-bar h1 { font-size: 14px; color: var(--primary); margin: 0; text-shadow: 1px 1px 2px black; }
+        .menu-btn { background: none; border: none; color: white; font-size: 20px; font-weight: bold; cursor: pointer; text-shadow: 1px 1px 2px black; }
         
-        .player { 
-            background: rgba(255,255,255,0.08); padding: 8px; border-radius: 12px; 
-            text-align: center; min-width: 65px; border: 2px solid transparent; flex-shrink: 0;
-            position: relative;
-        }
-        .player.active { border-color: var(--accent); background: rgba(255,215,0,0.15); }
-        .player.winner { border-color: var(--success); animation: winnerPulse 1s infinite; }
-        .player .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); margin: 0 auto 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; }
-        .player .name { font-size: 10px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
-        .player .stats { font-size: 9px; color: #aaa; margin-top: 2px; }
-        .player .status { 
-            position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; 
-            border-radius: 50%; background: var(--success); border: 1px solid var(--bg);
-        }
-        .player .status.offline { background: var(--danger); }
+        .dropdown { position: absolute; top: 40px; right: 10px; background: var(--menu-bg); border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 8px 16px rgba(0,0,0,0.5); width: 220px; display: none; flex-direction: column; overflow: hidden; z-index: 1000; }
+        .dropdown.active { display: flex; }
+        .dropdown button, .dropdown .menu-item { background: transparent; border: none; color: inherit; padding: 12px 15px; text-align: left; font-size: 13px; font-weight: bold; border-bottom: 1px solid rgba(128,128,128,0.2); cursor: pointer; display: flex; justify-content: space-between; align-items: center;}
+        .dropdown button:hover { background: rgba(255,255,255,0.1); }
+        .menu-input { width: 40px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555; border-radius: 4px; text-align: center; font-weight: bold;}
 
-        /* OYUN ALANI (Scrollable) */
-        .game-scroll { 
-            flex: 1; overflow-y: auto; overflow-x: hidden; 
-            background: var(--board); display: flex; flex-direction: column;
-        }
-        .game-scroll::-webkit-scrollbar { width: 4px; }
-        .game-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 2px; }
+        .sys-chat-top { position: absolute; top: 45px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; display: flex; flex-direction: column; gap: 4px; z-index: 9999; pointer-events: none; }
+        .sys-chat-line { background: rgba(0,0,0,0.8); color: var(--primary); padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; text-align: center; animation: fadeInOut 4s forwards; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-left: 3px solid var(--primary);}
+        @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(-5px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-10px); } }
 
-        /* ZAR */
-        .dice-section { 
-            display: none; flex-direction: column; align-items: center; 
-            padding: 20px; gap: 10px;
-        }
-        .dice { font-size: 60px; cursor: pointer; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5)); }
-        .dice.rolling { animation: roll 0.5s linear infinite; }
-        @keyframes roll { to { transform: rotate(360deg); } }
+        .table-area { flex: 1; background: var(--table); position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1.5fr 1fr; padding: 10px; margin-top: 30px; }
+        
+        .center-zone { grid-column: 2; grid-row: 2; display: flex; justify-content: center; align-items: center; gap: 20px; position: relative; }
+        
+        .edge-top { grid-column: 2; grid-row: 1; display: flex; justify-content: center; align-items: flex-start; }
+        .edge-bottom { grid-column: 2; grid-row: 3; display: flex; justify-content: center; align-items: flex-end; }
+        .edge-left { grid-column: 1; grid-row: 2; display: flex; justify-content: flex-start; align-items: center; }
+        .edge-right { grid-column: 3; grid-row: 2; display: flex; justify-content: flex-end; align-items: center; }
 
-        /* MASA */
-        .table { 
-            display: flex; flex-direction: column; align-items: center; 
-            padding: 10px; gap: 15px;
+        .corner-tl { grid-column: 1; grid-row: 1; display: flex; justify-content: center; align-items: center; } 
+        .corner-tr { grid-column: 3; grid-row: 1; display: flex; justify-content: center; align-items: center; } 
+        .corner-bl { grid-column: 1; grid-row: 3; display: flex; justify-content: center; align-items: center; } 
+        .corner-br { grid-column: 3; grid-row: 3; display: flex; justify-content: center; align-items: center; } 
+        
+        .avatar-box { background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 8px; text-align: center; border: 2px solid #555; color: white; display: flex; flex-direction: column; align-items: center; min-width: 80px; position: relative;}
+        .avatar-box.active { border-color: var(--success); box-shadow: 0 0 10px var(--success); }
+        .avatar-box .name { font-size: 13px; font-weight: bold; color: var(--primary); margin-bottom: 4px;}
+        .avatar-box .score { font-size: 12px; font-weight: bold; color: white; }
+        
+        .kick-btn { position: absolute; top: -10px; right: -10px; background: var(--danger); color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10;}
+        .turn-timer { position: absolute; top: -10px; left: -10px; background: var(--primary); color: #000; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10;}
+
+        .discard-pile { width: 5.5vw; height: 8vw; min-width: 45px; min-height: 65px; background: rgba(0,0,0,0.3); border: 2px dashed rgba(255,255,255,0.2); border-radius: 6px; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); z-index: 200; position: relative; color: white; font-size: 11px; font-weight: bold; text-align: center;}
+        .discard-pile.can-draw { cursor: pointer; border-color: var(--success); box-shadow: 0 0 12px rgba(138, 201, 38, 0.8); pointer-events: auto; animation: pulseGlow 1.5s infinite;} 
+        @keyframes pulseGlow { 0% { box-shadow: 0 0 5px var(--success); } 50% { box-shadow: 0 0 15px var(--success); } 100% { box-shadow: 0 0 5px var(--success); } }
+        
+        .my-discard-zone { border-color: #777; background: rgba(0, 0, 0, 0.5); cursor: default; pointer-events: auto;}
+        .my-discard-zone.active { background: rgba(255, 0, 0, 0.2); border-color: var(--danger); cursor: pointer;}
+
+        .center-item { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .pile { width: 6.5vw; height: 9.5vw; min-width: 42px; min-height: 62px; background: var(--tile); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); cursor: pointer; flex-direction: column; position: relative;}
+        
+        /* YENİ GERÇEKÇİ 3D DESTE KULESİ */
+        .pile.deck { 
+            background: #f0eadd; 
+            border: 1px solid #ccc; 
+            /* 3 Boyutlu Taş Destesi Hissiyatı İçin Katmanlı Gölge */
+            box-shadow: 
+                -1px -1px 0 #999, -2px -2px 0 #fff,
+                -3px -3px 0 #999, -4px -4px 0 #fff,
+                -5px -5px 0 #999, -6px -6px 0 #fff,
+                -8px -8px 8px rgba(0,0,0,0.6);
+        }
+        .pile.deck::after { 
+            content: "Okey"; 
+            color: rgba(0,0,0,0.2); 
+            font-size: 16px; 
+            font-weight: 900; 
+            letter-spacing: 2px;
+            transform: rotate(-45deg); 
+            position: absolute; 
         }
         
-        .piles-row { display: flex; gap: 25px; align-items: center; justify-content: center; }
-        .pile-wrap { text-align: center; }
-        .pile-wrap label { display: block; font-size: 9px; color: rgba(255,255,255,0.7); margin-bottom: 4px; font-weight: bold; letter-spacing: 0.5px; }
+        .pile.indicator { border: 2px solid var(--primary); cursor: default; }
+        .pile.indicator.dropzone { border-color: var(--success); box-shadow: 0 0 15px var(--success); } 
+        .deck-count { font-size: 11px; color: #aaa; text-shadow: 1px 1px 1px black; font-weight: bold;}
+
+        .dice-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 200; border-radius: 15px;}
+        .dice-overlay.active { display: flex; }
+        .dice-box { background: var(--menu-bg); padding: 20px; border-radius: 15px; text-align: center; border: 2px solid var(--accent); max-width: 80%;}
         
-        .pile { 
-            width: 42px; height: 62px; background: var(--tile); border-radius: 8px; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 20px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-            position: relative; cursor: pointer;
-        }
-        .pile.deck { background: linear-gradient(135deg, #2c3e50, #34495e); color: white; font-size: 14px; }
-        .pile.okey { background: linear-gradient(135deg, #ffd700, #ffed4e); animation: glow 2s infinite; }
-        .pile.indicator { border: 2px solid var(--accent); }
-        .pile .count { position: absolute; bottom: 2px; font-size: 8px; color: #666; }
+        /* YENİ SVG ZAR ALANI EFEKTLERİ */
+        .dice-icon { cursor: pointer; display: inline-block; transition: transform 0.2s; margin-top: 10px; border-radius: 15px; }
+        .dice-icon.rolling { animation: syncRoll 0.4s ease-in-out infinite alternate; }
+        @keyframes syncRoll { 0% { transform: scale(1) rotate(0deg); } 100% { transform: scale(1.3) rotate(360deg); } }
+
+        .bottom-area { background: rgba(0,0,0,0.6); display: flex; flex-direction: column; padding: 5px; flex-shrink: 0; z-index: 300; border-top: 1px solid rgba(255,255,255,0.1); width: 100vw; box-sizing: border-box;}
         
-        @keyframes glow { 0%, 100% { box-shadow: 0 0 10px rgba(255,215,0,0.4); } 50% { box-shadow: 0 0 20px rgba(255,215,0,0.8); } }
-        @keyframes winnerPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .player-chat-box { width: 100%; max-height: 4.5em; height: 4.5em; overflow-y: hidden; display: flex; flex-direction: column; justify-content: flex-end; margin-bottom: 5px; padding: 0 5px;}
+        .p-chat-line { font-size: 12px; color: white; line-height: 1.5em; text-shadow: 1px 1px 2px black; animation: fadeIn 0.2s; word-wrap: break-word;}
+        .p-chat-line audio { height: 24px; width: 180px; outline: none; vertical-align: middle; }
 
-        /* ATILANLAR ve PER AÇMA */
-        .action-row { 
-            display: flex; gap: 10px; width: 100%; justify-content: center;
-            background: rgba(0,0,0,0.3); padding: 10px; border-radius: 15px;
-        }
-        .action-slot { 
-            flex: 1; max-width: 80px; aspect-ratio: 0.7; border: 2px dashed rgba(255,255,255,0.3); 
-            border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 10px; color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.3s;
-        }
-        .action-slot:active { transform: scale(0.95); }
-        .action-slot.active { border-color: var(--success); background: rgba(0,230,118,0.1); }
-        .action-slot.highlight { border-color: var(--accent); background: rgba(255,215,0,0.1); }
-
-        /* AÇILAN PERLER */
-        .open-pers { 
-            width: 100%; max-height: 120px; overflow-y: auto; 
-            display: flex; flex-direction: column; gap: 5px; padding: 0 10px;
-        }
-        .per-line { 
-            display: flex; gap: 3px; justify-content: center; 
-            background: rgba(0,0,0,0.3); padding: 5px; border-radius: 8px;
-        }
-        .per-line .tile { transform: scale(0.85); margin: -2px; }
-
-        /* KONTROLLER */
-        .controls { 
-            display: flex; gap: 6px; padding: 8px; background: rgba(0,0,0,0.4); 
-            justify-content: center; flex-wrap: wrap; flex-shrink: 0;
-        }
-        .btn { 
-            padding: 8px 14px; border: none; border-radius: 20px; 
-            font-size: 11px; font-weight: bold; color: white; cursor: pointer; white-space: nowrap;
-        }
-        .btn-sort { background: #3498db; }
+        .action-bar { display: flex; justify-content: space-between; align-items: center; gap: 5px; margin-bottom: 5px; }
+        .chat-input-row { display: flex; flex: 1; gap: 5px; background: rgba(0,0,0,0.4); border-radius: 15px; padding: 2px; max-width: 180px;}
+        .chat-input-row input { flex: 1; background: transparent; border: none; color: white; padding: 5px 8px; font-size: 12px; outline: none; width: 100%;}
+        .mini-btn { background: var(--primary); color: #000; border: none; width: 28px; height: 28px; border-radius: 50%; font-weight: bold; display: flex; justify-content: center; align-items: center; cursor: pointer; flex-shrink: 0;}
+        .mini-btn.recording { background: var(--danger); color: white; animation: pulse 1s infinite; }
+        
+        .controls { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; flex: 2;}
+        .btn { padding: 6px 8px; border: none; border-radius: 8px; font-size: 11px; font-weight: bold; color: white; background: #444; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.3);}
+        .btn-hint { background: #17a2b8; } 
         .btn-double { background: #9b59b6; }
         .btn-double.active { background: #e91e63; box-shadow: 0 0 10px rgba(233,30,99,0.5); }
-        .btn-per { background: #f39c12; }
-        .btn-finish { background: var(--success); font-size: 12px; padding: 10px 20px; }
 
-        /* ISTAKA */
-        .rack-section { background: linear-gradient(180deg, #3e2723 0%, #271714 100%); flex-shrink: 0; }
-        .rack { 
-            display: flex; gap: 4px; padding: 10px 5px; overflow-x: auto; min-height: 90px;
-        }
-        .rack::-webkit-scrollbar { height: 4px; }
-        .rack::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+        .rack-wrapper { display: flex; align-items: flex-end; justify-content: center; width: 100%; box-sizing: border-box; padding: 0 5px;}
+
+        .rack { background: var(--rack); border-radius: 8px 8px 0 0; padding: 6px; border-top: 3px solid rgba(255,255,255,0.2); box-shadow: inset 0 10px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 2px; position: relative; width: 100%; max-width: 800px; }
+        .rack-row { display: flex; justify-content: space-between; width: 100%; gap: 2px; }
+        .slot { flex: 1; aspect-ratio: 2.2 / 3.2; background: rgba(0,0,0,0.25); border-radius: 5px; border: 1px solid rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; box-shadow: inset 1px 1px 3px rgba(0,0,0,0.6); position: relative; overflow: hidden;}
         
-        .tile { 
-            width: 40px; height: 58px; background: var(--tile); border-radius: 6px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
-            font-size: 22px; font-weight: bold; cursor: pointer; flex-shrink: 0; border: 2px solid transparent;
-            position: relative; transition: transform 0.2s;
-        }
-        .tile:active { transform: scale(0.95); }
-        .tile.selected { border-color: var(--primary); transform: translateY(-5px); box-shadow: 0 5px 15px rgba(233,69,96,0.4); }
-        .tile.red { color: #e74c3c; } .tile.blue { color: #3498db; } 
-        .tile.black { color: #2c3e50; } .tile.yellow { color: #f39c12; text-shadow: 0 0 1px rgba(0,0,0,0.3); }
-        .tile.fake { color: #27ae60; }
-        .tile.fake::after { content: "★"; font-size: 24px; }
-        .tile.okey-star::after { content: "👑"; position: absolute; top: 2px; right: 2px; font-size: 10px; }
+        .tile { width: 100%; height: 100%; background: var(--tile); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: clamp(14px, 4vw, 24px); font-weight: 900; color: #111; box-shadow: 1px 2px 4px rgba(0,0,0,0.6); border: 1px solid #fff; cursor: grab; position: absolute; z-index: 5; transition: border 0.2s;}
+        .tile:active { cursor: grabbing; z-index: 100; transform: scale(1.1); box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .tile.selected { border: 3px solid var(--primary); transform: translateY(-5px); }
+        .tile.useless { border: 3px solid var(--danger); animation: shake 0.5s infinite;} 
+        .tile.red { color: #d62828; } .tile.blue { color: #003049; } .tile.black { color: #000000; } .tile.yellow { color: #f77f00; }
+        .tile.fake { color: #38b000; font-size: clamp(10px, 3vw, 18px); } .tile.fake::after { content: "★"; font-size: clamp(14px, 4vw, 24px); }
 
-        /* SOHBET */
-        .chat-section { 
-            background: rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.1); 
-            flex-shrink: 0; max-height: 150px; display: flex; flex-direction: column;
-        }
-        .chat-messages { 
-            flex: 1; overflow-y: auto; padding: 8px; font-size: 13px; display: flex; flex-direction: column; gap: 4px;
-        }
-        .chat-msg { background: rgba(255,255,255,0.1); padding: 6px 10px; border-radius: 12px; max-width: 90%; word-break: break-word; }
-        .chat-msg b { color: var(--accent); }
-        .chat-msg audio { height: 30px; width: 200px; }
-        .chat-input { 
-            display: flex; gap: 5px; padding: 8px; background: rgba(0,0,0,0.3);
-        }
-        .chat-input input { 
-            flex: 1; background: rgba(255,255,255,0.1); border: none; border-radius: 20px; 
-            padding: 8px 15px; color: white; font-size: 14px; outline: none;
-        }
-        .chat-btn { 
-            width: 36px; height: 36px; border-radius: 50%; border: none; 
-            background: var(--primary); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;
-        }
-        .chat-btn.recording { background: var(--danger); animation: recordPulse 1s infinite; }
-        @keyframes recordPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+        .ghost-tile { position: fixed; pointer-events: none; z-index: 9999; opacity: 0.9; transform: scale(1.1); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
 
-        /* MODALLER */
-        .modal { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.9); z-index: 1000; display: none;
-            align-items: center; justify-content: center; padding: 20px;
-        }
-        .modal.active { display: flex; }
-        .modal-box { 
-            background: var(--card); padding: 25px; border-radius: 20px; width: 100%; max-width: 320px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .modal-box h2 { color: var(--accent); margin-bottom: 15px; text-align: center; }
-        .modal-box input { 
-            width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; 
-            border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white;
-        }
-        .modal-box button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-main { background: var(--primary); color: white; }
-        .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); }
-
-        /* BİTİŞ EKRANI */
-        .game-over { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.95); z-index: 2000; display: none;
-            flex-direction: column; align-items: center; justify-content: center; padding: 20px;
-        }
-        .game-over.active { display: flex; }
-        .game-over h1 { font-size: 32px; color: var(--accent); margin-bottom: 10px; animation: bounce 1s infinite; }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .score-board { width: 100%; max-width: 300px; background: rgba(255,255,255,0.05); border-radius: 15px; padding: 15px; margin: 20px 0; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; flex-direction: column; }
+        .modal-box { background: var(--bg); padding: 25px; border-radius: 15px; width: 100%; max-width: 320px; border: 1px solid #555; text-align: center; }
+        .modal-box h2 { color: var(--primary); margin-bottom: 15px; }
+        .modal-box input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: inherit; font-size: 14px; text-align: center;}
+        .modal-box button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: #000; }
+        
+        .winner-rack { display: flex; flex-direction: column; gap: 3px; background: var(--rack); padding: 8px; border-radius: 8px; margin: 15px 0; width: 100%; max-width: 360px; border: 2px solid var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.8);}
+        .winner-rack-row { display: flex; justify-content: space-between; height: 35px; }
+        .winner-rack-row .mini-slot { flex: 1; border: 1px solid rgba(0,0,0,0.5); border-radius: 3px; background: rgba(0,0,0,0.3); position: relative; margin: 0 1px; display: flex; justify-content: center; align-items: center;}
+        .mini-slot .tile { font-size: 16px; border-width: 1px; border-radius: 3px; position: static;}
+        .mini-slot .tile.fake { font-size: 10px; }
+        
+        .score-board { width: 100%; max-width: 360px; background: rgba(255,255,255,0.05); border-radius: 15px; padding: 15px; margin-bottom: 20px; color: white;}
         .score-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .score-row.winner { background: rgba(0,230,118,0.15); border-radius: 8px; border-left: 3px solid var(--success); }
-        .finish-reason { text-align: center; color: #aaa; font-size: 14px; margin: 10px 0; }
-
-        /* TOAST */
-        .toast { 
-            position: fixed; top: 50px; left: 50%; transform: translateX(-50%); 
-            background: rgba(0,0,0,0.9); color: white; padding: 10px 20px; 
-            border-radius: 20px; font-size: 14px; z-index: 3000; display: none;
-            border-left: 3px solid var(--accent); max-width: 90%; text-align: center;
-        }
+        .finish-reason { text-align: center; color: #ccc; font-size: 16px; margin-top: 5px; font-weight: bold;}
     </style>
 </head>
 <body>
 
     <div class="connection-bar" id="connBar"></div>
 
+    <div class="top-bar">
+        <h1>Okey Pro</h1>
+        <button class="menu-btn" onclick="toggleMenu()">⋮</button>
+        
+        <div class="dropdown" id="mainMenu">
+            <button onclick="copyCode()">📋 Oda Kodunu Kopyala</button>
+            <div class="menu-item">
+                <span>🏆 Puan:</span>
+                <input type="number" id="startScoreInput" class="menu-input" value="20" onchange="updateStartScore(this.value)">
+            </div>
+            <button onclick="toggleTheme()">🌓 Açık/Koyu Tema</button>
+            <button onclick="changeTableColor()">🎨 Masa Rengini Değiştir</button>
+            <button onclick="changeRackColor()">🪵 Istaka Rengini Değiştir</button>
+            <button onclick="sortSmart()">🧠 Akıllı Sırala</button>
+            <button onclick="highlightUselessTile()">💡 AI İpucu</button>
+            <button onclick="resetGame()" style="color: var(--danger);">🔄 Yeniden Başlat</button>
+        </div>
+    </div>
+
+    <div class="sys-chat-top" id="sysChat"></div>
+
     <div class="modal active" id="loginModal">
         <div class="modal-box">
-            <h2>🎴 Okey Pro</h2>
-            <input type="text" id="playerName" placeholder="Adınız" maxlength="12" value="Alptekin">
+            <h2>🎴 Alptekin Okey</h2>
+            <input type="text" id="playerName" placeholder="Adınız" maxlength="12" value=""> 
             <input type="text" id="roomInput" placeholder="Oda Kodu (Katılmak için)">
-            <button class="btn-main" onclick="createRoom()">Yeni Oda Kur</button>
-            <button class="btn-secondary" onclick="joinRoom()">Odaya Katıl</button>
+            <button class="btn-main" style="background:var(--primary);" onclick="createRoom()">Yeni Oda Kur</button>
+            <button class="btn-secondary" style="background:#555; color:white;" onclick="joinRoom()">Odaya Katıl</button>
         </div>
     </div>
 
-    <div class="game-over" id="gameOver">
-        <h1>👑 Kazanan!</h1>
+    <div class="modal" id="gameOverModal">
+        <h1 style="color:var(--accent); font-size:36px; text-shadow: 0 2px 4px black;">El Bitti!</h1>
         <div class="finish-reason" id="finishReason"></div>
+        <div id="winnerRackContainer"></div>
         <div class="score-board" id="scoreBoard"></div>
-        <button class="btn-main" onclick="newRound()" style="padding: 15px 40px;">Yeni El</button>
+        <button id="nextRoundBtn" style="padding: 15px 40px; background:var(--primary); border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);" onclick="newRound()">Yeni El Başlat</button>
     </div>
 
-    <div class="toast" id="toast"></div>
-
-    <div class="nav">
-        <h1>🎴 Okey Pro</h1>
-        <span class="room-code" id="roomCode" onclick="copyRoomCode()">-</span>
-        <button onclick="toggleMenu()" style="background:none;border:none;color:white;font-size:20px;">⋮</button>
-    </div>
-
-    <div class="players" id="players"></div>
-
-    <div class="game-scroll" id="gameScroll">
-        <div class="dice-section" id="diceSection">
-            <div style="color:#aaa;font-size:14px;">Gösterge için zara dokun (2 kez)</div>
-            <div class="dice" id="dice" onclick="rollDice()">🎲</div>
-            <div id="diceInfo" style="color:#888;font-size:12px;"></div>
-        </div>
-
-        <div class="table" id="table" style="display:none;">
-            <div class="piles-row">
-                <div class="pile-wrap">
-                    <label>GÖSTERGE</label>
-                    <div class="pile indicator" id="gosterge">?</div>
+    <div class="table-area" id="tableArea" style="display:none;">
+        <div class="dice-overlay" id="diceArea">
+            <div class="dice-box">
+                <h3 style="color:var(--primary); margin-bottom:5px;">Zar Atma Sırası</h3>
+                <div class="dice-icon" id="diceIcon" onclick="requestRollDice()">
+                    <svg width="70" height="70" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));"><rect width="100" height="100" rx="20" fill="#f0eadd" stroke="#ccc" stroke-width="2"/><circle cx="25" cy="25" r="10" fill="#222"/><circle cx="75" cy="25" r="10" fill="#222"/><circle cx="50" cy="50" r="10" fill="#222"/><circle cx="25" cy="75" r="10" fill="#222"/><circle cx="75" cy="75" r="10" fill="#222"/></svg>
                 </div>
-                <div class="pile-wrap">
-                    <label>DESTE</label>
-                    <div class="pile deck" id="deck" onclick="drawFromDeck()">
-                        <span id="deckCount">106</span>
-                    </div>
-                </div>
-                <div class="pile-wrap">
-                    <label>OKEY</label>
-                    <div class="pile okey" id="okey">?</div>
-                </div>
+                <div id="diceInfo" style="font-size:12px; color:#aaa; margin-top:5px; line-height: 1.4;">Dağıtıcı bekleniyor.</div>
             </div>
+        </div>
 
-            <div class="action-row">
-                <div class="action-slot" id="slotLeft" onclick="drawFromDiscard()">
-                    <span>SOLDAN ÇEK</span>
-                    <div id="discardLeft" style="margin-top:5px;"></div>
-                </div>
-                <div class="action-slot" id="slotPer" onclick="openPer()">
-                    <span>PER AÇ</span>
-                    <small style="font-size:8px;margin-top:2px;">3+ taş seç</small>
-                </div>
-                <div class="action-slot highlight" id="slotRight" onclick="discardSelected()">
-                    <span>ATIŞ YAP</span>
-                    <small style="font-size:8px;margin-top:2px;">Seçili taş</small>
-                </div>
+        <div class="grid-edge edge-bottom" id="pos-bottom"></div>
+        <div class="grid-edge edge-right" id="pos-right"></div>
+        <div class="grid-edge edge-top" id="pos-top"></div>
+        <div class="grid-edge edge-left" id="pos-left"></div>
+
+        <div class="grid-corner corner-br" id="pile-bottom"></div>
+        <div class="grid-corner corner-tr" id="pile-right"></div>
+        <div class="grid-corner corner-tl" id="pile-top"></div>
+        <div class="grid-corner corner-bl" id="pile-left"></div>
+
+        <div class="center-zone" id="centerZone" style="display:none;">
+            <div class="center-item">
+                <div class="pile indicator" id="gostergePile"></div>
+                <div class="deck-count" style="color:white;">Gösterge / Bit</div>
             </div>
-
-            <div class="open-pers" id="openPers"></div>
+            <div class="center-item">
+                <div class="pile deck" id="deck" onclick="drawFromDeck()"></div>
+                <div class="deck-count" id="deckCount" style="color:white;">106</div>
+            </div>
         </div>
     </div>
 
-    <div class="controls">
-        <button class="btn btn-sort" onclick="sortByNumber()">🔢 Sayı</button>
-        <button class="btn btn-sort" onclick="sortByColor()">🎨 Renk</button>
-        <button class="btn btn-sort" onclick="sortSmart()">🧠 Akıllı</button>
-        <button class="btn btn-double" id="btnDouble" onclick="toggleDoubleMode()">👥 Çift: KAPALI</button>
-        <button class="btn btn-per" onclick="showOpenPers()">📂 Perler</button>
-        <button class="btn btn-finish" onclick="checkWin()">🏁 BİTTİ</button>
-    </div>
+    <div class="bottom-area" id="bottomArea" style="display:none;">
+        <div class="player-chat-box" id="playerChat"></div>
+        
+        <div class="action-bar">
+            <div class="chat-input-row">
+                <button class="mini-btn" id="micBtn" onclick="toggleVoice()">🎙️</button>
+                <input type="text" id="msgInput" placeholder="Mesaj..." onkeypress="if(event.key==='Enter')sendMsg()">
+                <button class="mini-btn" onclick="sendMsg()" style="background:#555; color:white;">➤</button>
+            </div>
+            <div class="controls">
+                <button class="btn btn-hint" onclick="sortTiles('single')">🔢 Tekli Diz</button>
+                <button class="btn btn-hint" onclick="sortTiles('double')">👥 Çiftli Diz</button>
+                <button class="btn btn-double" id="btnDouble" onclick="toggleDoubleMode()">👥 Çifte Git</button>
+            </div>
+        </div>
 
-    <div class="rack-section">
-        <div class="rack" id="rack"></div>
-    </div>
-
-    <div class="chat-section">
-        <div class="chat-messages" id="chatBox"></div>
-        <div class="chat-input">
-            <button class="chat-btn" id="micBtn" onclick="toggleVoice()">🎙️</button>
-            <input type="text" id="msgInput" placeholder="Mesaj..." onkeypress="if(event.key==='Enter')sendMsg()">
-            <button class="chat-btn" onclick="sendMsg()">📤</button>
+        <div class="rack-wrapper">
+            <div class="rack" id="rack">
+                <div class="rack-row" id="row0"></div>
+                <div class="rack-row" id="row1"></div>
+            </div>
         </div>
     </div>
-
     <script>
+        // Service Worker Kaydı (PWA için)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker başarıyla kaydedildi!', reg))
+                    .catch(err => console.error('Service Worker kaydı başarısız:', err));
+            });
+        }
+
         // ==================== DEĞİŞKENLER ====================
         const COLORS = ['red', 'blue', 'black', 'yellow'];
         let peer, myId, myName, roomCode, isHost = false;
-        let connections = new Map(); // peerId -> connection
+        let connections = new Map();
+        
         let gameState = {
-            players: [], // {id, name, tiles:[], score:20, hasOpened:false, isDouble:false, online:true}
-            deck: [],
-            discardPile: [], // Atılan taşlar dizisi
-            openPers: [], // Açılan perler [[tile,tile,tile], ...]
-            currentPlayer: 0,
-            gosterge: null,
-            okeyTile: null,
-            doubleMode: false,
-            started: false,
-            round: 1
+            players: [], deck: [], currentPlayer: 0, dealerIndex: 0, gosterge: null, okeyTile: null, started: false, round: 1, startScore: 20
         };
-        let myHand = [];
-        let selectedTiles = new Set();
+
+        let myRackData = new Array(28).fill(null);
+        let selectedIndices = new Set();
         let hasDrawn = false;
+        let isDoubleMode = false;
         let mediaRecorder, audioChunks = [];
         let diceRollCount = 0;
+        let uselessTileIndex = -1; 
+        
+        let turnTimerInterval = null;
 
-        // ==================== BAŞLANGIÇ ====================
-        function init() {
-            peer = new Peer();
-            peer.on('open', id => {
-                myId = id;
-                updateConnectionStatus('online');
+        // ==================== HAFIZA VE MENÜ ====================
+        function applySavedSettings() {
+            const savedTheme = localStorage.getItem('okey_theme') || 'dark';
+            const savedTable = localStorage.getItem('okey_table') || 'blue';
+            const savedRack = localStorage.getItem('okey_rack') || 'wood';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.documentElement.setAttribute('data-table', savedTable);
+            document.documentElement.setAttribute('data-rack', savedRack);
+        }
+        applySavedSettings();
+
+        function toggleMenu() { document.getElementById('mainMenu').classList.toggle('active'); }
+        function copyCode() { navigator.clipboard.writeText(roomCode); addSysChat('Oda kodu kopyalandı.'); toggleMenu(); }
+        
+        function updateStartScore(val) {
+            if(!isHost) return addSysChat('Puanı sadece kurucu değiştirebilir!');
+            gameState.startScore = parseInt(val) || 20;
+            gameState.players.forEach(p => p.score = gameState.startScore);
+            broadcast({type: 'stateUpdate', state: gameState}); updateTableUI();
+        }
+
+        function toggleTheme() { 
+            const newTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme); localStorage.setItem('okey_theme', newTheme); toggleMenu(); 
+        }
+        function changeTableColor() { 
+            let tableColors = ['blue', 'green', 'red'];
+            let nextIdx = (tableColors.indexOf(document.documentElement.getAttribute('data-table')) + 1) % tableColors.length;
+            document.documentElement.setAttribute('data-table', tableColors[nextIdx]); localStorage.setItem('okey_table', tableColors[nextIdx]); toggleMenu(); 
+        }
+        function changeRackColor() {
+            let rackColors = ['wood', 'dark', 'light'];
+            let nextIdx = (rackColors.indexOf(document.documentElement.getAttribute('data-rack')) + 1) % rackColors.length;
+            document.documentElement.setAttribute('data-rack', rackColors[nextIdx]); localStorage.setItem('okey_rack', rackColors[nextIdx]); toggleMenu();
+        }
+        function resetGame() { if(confirm('Odayı kapatıp yeniden başlatmak istiyor musunuz?')) location.reload(); }
+
+        // ==================== AI ====================
+        function getUselessTileIndex() {
+            let tilesWithIndex = myRackData.map((t, i) => ({tile: t, index: i})).filter(x => x.tile !== null);
+            if(tilesWithIndex.length === 0) return -1;
+            let scores = tilesWithIndex.map(item => {
+                let t = item.tile; let score = 0;
+                if(t.isFake || (gameState.okeyTile && t.color === gameState.okeyTile.color && t.num === gameState.okeyTile.num)) return {index: item.index, score: 9999}; 
+                score += tilesWithIndex.filter(x => x.tile.num === t.num && x.tile.color !== t.color).length * 20;
+                score += tilesWithIndex.filter(x => x.tile.color === t.color && Math.abs(x.tile.num - t.num) > 0 && Math.abs(x.tile.num - t.num) <= 2).length * 15;
+                if(tilesWithIndex.filter(x => x.tile.color === t.color && x.tile.num === t.num).length > 1) score += 10;
+                return {index: item.index, score: score};
             });
-            peer.on('disconnected', () => updateConnectionStatus('connecting'));
-            peer.on('error', () => updateConnectionStatus('offline'));
-
-            // TÜM BAĞLANTILARI BURADA DİNLİYORUZ (Race Condition ve kopmaları önlemek için)
-            peer.on('connection', conn => {
-                conn.on('open', () => {
-                    connections.set(conn.peer, conn);
-                    conn.on('data', data => handleNetworkData(data, conn.peer));
-                });
-                conn.on('close', () => {
-                    connections.delete(conn.peer);
-                    if (isHost) {
-                        const p = gameState.players.find(x => x.id === conn.peer);
-                        if (p) { 
-                            p.online = false; 
-                            broadcastPlayers(); 
-                            addChat('Sistem', p.name + ' ayrıldı.'); 
-                        }
-                    }
-                });
-            });
-        }
-        init();
-
-        function updateConnectionStatus(status) {
-            const bar = document.getElementById('connBar');
-            bar.className = 'connection-bar ' + status;
-            if (status === 'offline') showToast('Bağlantı koptu! Yeniden bağlanılıyor...');
+            scores.sort((a,b) => a.score - b.score);
+            return scores[0].index; 
         }
 
-        // ==================== ODA YÖNETİMİ ====================
-        function createRoom() {
-            myName = document.getElementById('playerName').value || 'Oyuncu';
-            isHost = true;
-            roomCode = myId;
-            
-            addPlayer(myId, myName, true);
-            
-            document.getElementById('loginModal').classList.remove('active');
-            document.getElementById('roomCode').innerText = roomCode;
-            document.getElementById('diceSection').style.display = 'flex';
-            
-            addChat('Sistem', 'Oda kuruldu. Kod: ' + roomCode);
-        }
-
-        function joinRoom() {
-            myName = document.getElementById('playerName').value || 'Oyuncu';
-            const targetId = document.getElementById('roomInput').value;
-            if (!targetId) return showToast('Oda kodu gerekli!');
-            
-            roomCode = targetId;
-            const conn = peer.connect(targetId, {reliable: true});
-            
-            conn.on('open', () => {
-                connections.set(targetId, conn);
-                // Katılma isteğini Kurucuya (Host) ilet
-                conn.send({type: 'join', name: myName, id: myId});
-                conn.on('data', data => handleNetworkData(data, targetId));
-                
-                document.getElementById('loginModal').classList.remove('active');
-                document.getElementById('roomCode').innerText = roomCode;
-                addChat('Sistem', 'Odaya katılındı. Başlatılması bekleniyor...');
-            });
-            
-            conn.on('close', () => {
-                showToast('Kurucu ile bağlantı koptu!');
-                updateConnectionStatus('offline');
-            });
-            conn.on('error', () => showToast('Bağlantı hatası!'));
-        }
-
-        function addPlayer(id, name, isMe = false) {
-            gameState.players.push({
-                id, name, tiles: [], score: 20, 
-                hasOpened: false, isDouble: false, online: true
-            });
-            if (isMe) renderPlayers();
-        }
-
-        // ==================== AĞ İLETİŞİMİ ====================
-        function broadcast(msg) {
-            connections.forEach((conn, id) => {
-                if (conn.open) conn.send(msg);
-            });
-        }
-
-        function handleNetworkData(data, from) {
-            switch(data.type) {
-                case 'join':
-                    if (isHost) {
-                        // Eğer aynı id ile düşüp yeniden gelmişse kontrol et
-                        let existingPlayer = gameState.players.find(p => p.id === data.id);
-                        if (existingPlayer) {
-                            existingPlayer.online = true;
-                            existingPlayer.name = data.name;
-                        } else {
-                            addPlayer(data.id, data.name);
-                        }
-                        
-                        // Sadece bağlanan kişiye mevcut tüm masayı gönder (Senkronizasyon)
-                        const newConn = connections.get(data.id);
-                        if (newConn) newConn.send({type: 'fullState', state: gameState, yourId: data.id});
-                        
-                        // Herkese yeni oyuncu listesini yayınla
-                        broadcastPlayers();
-                        addChat('Sistem', data.name + ' odaya katıldı');
-                    }
-                    break;
-                    
-                case 'fullState':
-                    gameState = data.state;
-                    myId = data.yourId; // Host'un bize tanıdığı id
-                    
-                    // Oyundan düşüp geri geldiysek taşlarımızı yükleyelim
-                    if (gameState.started) {
-                        const me = gameState.players.find(p => p.id === myId);
-                        if (me && me.tiles) {
-                            myHand = me.tiles;
-                            renderHand();
-                        }
-                        document.getElementById('diceSection').style.display = 'none';
-                        document.getElementById('table').style.display = 'flex';
-                        updateTable();
-                    }
-                    renderPlayers();
-                    break;
-                    
-                case 'players':
-                    gameState.players = data.players;
-                    renderPlayers();
-                    break;
-                    
-                case 'chat':
-                    addChat(data.name, data.text, data.audio);
-                    // Düzeltme: Host, mesajı aldıktan sonra diğer herkese de iletmelidir (Relay)
-                    if (isHost) {
-                        connections.forEach((c, id) => {
-                            if (id !== from && c.open) c.send(data);
-                        });
-                    }
-                    break;
-                    
-                case 'action':
-                    if (isHost) processAction(data.action, data.pid, data.data);
-                    break;
-                    
-                case 'stateUpdate':
-                    gameState = data.state;
-                    updateUI();
-                    // Düzeltme: Bir client oyun durumunu güncellediğinde, Host bunu diğer herkese de yaymalıdır.
-                    if (isHost) {
-                        connections.forEach((c, id) => {
-                            if (id !== from && c.open) c.send({type: 'stateUpdate', state: gameState});
-                        });
-                    }
-                    break;
-                    
-                case 'yourHand':
-                    myHand = data.hand;
-                    renderHand();
-                    break;
-                    
-                case 'diceRoll':
-                    if (!isHost) {
-                        document.getElementById('dice').innerText = data.result;
-                        if (data.count === 2) setTimeout(() => startGame(), 1000);
-                    }
-                    break;
+        function highlightUselessTile() {
+            uselessTileIndex = getUselessTileIndex();
+            if(uselessTileIndex !== -1) {
+                renderRack(); toggleMenu(); addSysChat('En izole ve işe yaramayan taş işaretlendi.');
+                setTimeout(() => { uselessTileIndex = -1; renderRack(); }, 3000);
             }
-        }
-
-        function broadcastPlayers() {
-            broadcast({type: 'players', players: gameState.players});
-            renderPlayers();
-        }
-
-        // ==================== OYUN BAŞLATMA ====================
-        function rollDice() {
-            if (!isHost) return showToast('Sadece kurucu zar atabilir');
-            if (gameState.players.length < 2) return showToast('En az 2 oyuncu gerekli');
-            
-            const dice = document.getElementById('dice');
-            dice.classList.add('rolling');
-            
-            setTimeout(() => {
-                dice.classList.remove('rolling');
-                const result = ['⚀','⚁','⚂','⚃','⚄','⚅'][Math.floor(Math.random()*6)];
-                dice.innerText = result;
-                diceRollCount++;
-                
-                broadcast({type: 'diceRoll', result, count: diceRollCount});
-                
-                if (diceRollCount === 2) {
-                    setTimeout(startGame, 1000);
-                } else {
-                    document.getElementById('diceInfo').innerText = 'Bir kez daha atın';
-                }
-            }, 600);
-        }
-
-        function startGame() {
-            // Deste oluştur
-            gameState.deck = [];
-            for (let c of COLORS) {
-                for (let n = 1; n <= 13; n++) {
-                    gameState.deck.push({color: c, num: n, id: Math.random().toString(36).substr(2,9)});
-                    gameState.deck.push({color: c, num: n, id: Math.random().toString(36).substr(2,9)});
-                }
-            }
-            gameState.deck.push({color: 'fake', num: 0, isFake: true, id: 'f1'});
-            gameState.deck.push({color: 'fake', num: 0, isFake: true, id: 'f2'});
-            
-            // Karıştır
-            gameState.deck.sort(() => Math.random() - 0.5);
-            
-            // Gösterge ve Okey
-            const g = gameState.deck.pop();
-            gameState.gosterge = g;
-            gameState.okeyTile = {
-                color: g.color, 
-                num: g.num === 13 ? 1 : g.num + 1,
-                isFake: false
-            };
-            
-            // Dağıt
-            gameState.players.forEach((p, i) => {
-                const count = i === 0 ? 15 : 14;
-                const hand = [];
-                for (let j = 0; j < count; j++) hand.push(gameState.deck.pop());
-                p.tiles = hand;
-                
-                if (i === 0 && isHost) {
-                    myHand = hand;
-                } else {
-                    const conn = connections.get(p.id);
-                    if (conn) conn.send({type: 'yourHand', hand});
-                }
-            });
-            
-            gameState.started = true;
-            gameState.currentPlayer = 0;
-            broadcast({type: 'stateUpdate', state: gameState});
-            
-            document.getElementById('diceSection').style.display = 'none';
-            document.getElementById('table').style.display = 'flex';
-            updateUI();
-            renderHand();
-            addChat('Sistem', `Oyun başladı! Okey: ${colorName(gameState.okeyTile.color)} ${gameState.okeyTile.num}`);
-        }
-
-        // ==================== OYUN MEKANİĞİ ====================
-        function drawFromDeck() {
-            if (!isMyTurn()) return showToast('Sıra sizde değil');
-            if (hasDrawn) return showToast('Zaten çektiniz');
-            if (gameState.deck.length === 0) return showToast('Deste bitti');
-            
-            const tile = gameState.deck.pop();
-            myHand.push(tile);
-            hasDrawn = true;
-            
-            if (isHost) {
-                getMyPlayer().tiles = myHand; 
-                broadcast({type: 'stateUpdate', state: gameState});
-            } else {
-                sendAction('drawDeck', {});
-            }
-            
-            renderHand();
-            updateTable();
-            showToast('Desteden çektiniz');
-        }
-
-        function drawFromDiscard() {
-            if (!isMyTurn()) return showToast('Sıra sizde değil');
-            if (hasDrawn) return showToast('Zaten çektiniz');
-            if (gameState.discardPile.length === 0) return showToast('Ortada taş yok');
-            
-            const tile = gameState.discardPile.pop();
-            myHand.push(tile);
-            hasDrawn = true;
-            
-            updateDiscardView();
-            renderHand();
-            showToast('Ortadaki taşı aldınız');
-            
-            if (!isHost) sendAction('drawDiscard', {});
-        }
-
-        function discardSelected() {
-            if (!isMyTurn()) return showToast('Sıra sizde değil');
-            if (!hasDrawn && myHand.length < 15) return showToast('Önce taş çekin');
-            if (selectedTiles.size === 0) return showToast('Taş seçin');
-            if (selectedTiles.size > 1) return showToast('Tek seferde 1 taş atın');
-            
-            const idx = Array.from(selectedTiles)[0];
-            const tile = myHand.splice(idx, 1)[0];
-            gameState.discardPile.push(tile);
-            selectedTiles.clear();
-            
-            const me = getMyPlayer();
-            me.tiles = myHand;
-            
-            if (myHand.length === 0) {
-                endGame(me.id, 'normal');
-                return;
-            }
-            
-            nextTurn();
-            renderHand();
-            updateDiscardView();
-            showToast('Taş atıldı');
-        }
-
-        function nextTurn() {
-            hasDrawn = false;
-            selectedTiles.clear();
-            gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-            broadcast({type: 'stateUpdate', state: gameState});
-            updateUI();
-            
-            if (isMyTurn()) showToast('Sıra sizde!');
-        }
-
-        function sendAction(action, data) {
-            const hostConn = connections.get(roomCode);
-            if (hostConn) hostConn.send({type: 'action', action, pid: myId, data});
-        }
-
-        function processAction(action, pid, data) {
-            const p = gameState.players.find(x => x.id === pid);
-            if (!p) return;
-            
-            switch(action) {
-                case 'drawDeck':
-                    if (gameState.deck.length > 0) {
-                        p.tiles.push(gameState.deck.pop());
-                    }
-                    break;
-                case 'drawDiscard':
-                    if (gameState.discardPile.length > 0) {
-                        p.tiles.push(gameState.discardPile.pop());
-                    }
-                    break;
-            }
-            broadcast({type: 'stateUpdate', state: gameState});
-        }
-
-        // ==================== PER AÇMA ====================
-        function openPer() {
-            if (selectedTiles.size < 3) return showToast('En az 3 taş seçin');
-            
-            const tiles = Array.from(selectedTiles).map(i => myHand[i]);
-            
-            if (isValidPer(tiles)) {
-                const indices = Array.from(selectedTiles).sort((a,b) => b-a);
-                indices.forEach(i => myHand.splice(i, 1));
-                
-                gameState.openPers.push(tiles);
-                getMyPlayer().hasOpened = true;
-                
-                selectedTiles.clear();
-                renderHand();
-                renderOpenPers();
-                broadcast({type: 'stateUpdate', state: gameState});
-                showToast('Per açıldı! ✅');
-            } else {
-                showToast('Geçersiz per! Aynı renk sıralı veya farklı renk aynı sayı olmalı');
-            }
-        }
-
-        function isValidPer(tiles) {
-            if (tiles.length < 3) return false;
-            
-            const realTiles = tiles.filter(t => !t.isFake);
-            const fakeCount = tiles.filter(t => t.isFake).length;
-            if (fakeCount > 1) return false;
-            
-            if (realTiles.every(t => t.num === realTiles[0].num)) {
-                const colors = new Set(realTiles.map(t => t.color));
-                return colors.size === realTiles.length && realTiles.length + fakeCount >= 3;
-            }
-            
-            if (realTiles.every(t => t.color === realTiles[0].color)) {
-                const nums = realTiles.map(t => t.num).sort((a,b) => a-b);
-                for (let i = 1; i < nums.length; i++) {
-                    if (nums[i] !== nums[i-1] + 1) return false;
-                }
-                return true;
-            }
-            
-            return false;
-        }
-
-        // ==================== ÇİFT MODU ve BİTİŞ ====================
-        function toggleDoubleMode() {
-            gameState.doubleMode = !gameState.doubleMode;
-            getMyPlayer().isDouble = gameState.doubleMode;
-            document.getElementById('btnDouble').classList.toggle('active');
-            document.getElementById('btnDouble').innerText = gameState.doubleMode ? '👥 Çift: AÇIK' : '👥 Çift: KAPALI';
-            showToast(gameState.doubleMode ? 'Çifte gitme modu aktif!' : 'Normal mod');
-        }
-
-        function checkWin() {
-            const me = getMyPlayer();
-            if (myHand.length > 1) return showToast('Bitmek için 1 taş kalmalı');
-            if (!me.hasOpened && gameState.openPers.filter(p => p.owner === myId).length === 0) {
-                return showToast('Önce per açmalısınız!');
-            }
-            
-            if (gameState.doubleMode) {
-                if (!checkDoubleWin()) return showToast('7 çift toplamadınız!');
-            }
-            
-            const type = gameState.doubleMode ? 'double' : 'normal';
-            endGame(myId, type);
-        }
-
-        function checkDoubleWin() {
-            const counts = {};
-            myHand.forEach(t => {
-                const key = t.color + '-' + t.num;
-                counts[key] = (counts[key] || 0) + 1;
-            });
-            const pairs = Object.values(counts).filter(c => c === 2).length;
-            return pairs >= 7; 
-        }
-
-        function endGame(winnerId, type) {
-            const winner = gameState.players.find(p => p.id === winnerId);
-            if (!winner) return;
-            
-            let points = type === 'double' ? 4 : 2;
-            const lastTile = myHand[0];
-            if (lastTile && isOkeyTile(lastTile)) points *= 2;
-            
-            winner.score += points;
-            
-            gameState.players.forEach(p => {
-                if (p.id !== winnerId) {
-                    let penalty = type === 'double' ? 4 : 2;
-                    if (!p.hasOpened) penalty += 2;
-                    p.score = Math.max(0, p.score - penalty);
-                }
-            });
-            
-            document.getElementById('gameOver').classList.add('active');
-            document.getElementById('finishReason').innerText = 
-                type === 'double' ? 'Çiftten Bitiş! +' + points + ' puan' : 'Normal Bitiş +' + points + ' puan';
-            
-            const sorted = [...gameState.players].sort((a,b) => b.score - a.score);
-            document.getElementById('scoreBoard').innerHTML = sorted.map(p => `
-                <div class="score-row ${p.id === winnerId ? 'winner' : ''}">
-                    <span>${p.name} ${p.id === winnerId ? '👑' : ''}</span>
-                    <span>${p.score}</span>
-                </div>
-            `).join('');
-            
-            confetti({particleCount: 150, spread: 70, origin: {y: 0.6}, colors: ['#ffd700', '#ff6b6b', '#00e676']});
-            broadcast({type: 'stateUpdate', state: gameState});
-        }
-
-        function newRound() {
-            document.getElementById('gameOver').classList.remove('active');
-            gameState.round++;
-            gameState.deck = [];
-            gameState.discardPile = [];
-            gameState.openPers = [];
-            gameState.players.forEach(p => {
-                p.tiles = [];
-                p.hasOpened = false;
-            });
-            diceRollCount = 0;
-            document.getElementById('dice').innerText = '🎲';
-            document.getElementById('table').style.display = 'none';
-            document.getElementById('diceSection').style.display = 'flex';
-            hasDrawn = false;
-            selectedTiles.clear();
-            addChat('Sistem', `El ${gameState.round} başlıyor...`);
-        }
-
-        // ==================== SOHBET ve SES ====================
-        function addChat(name, text, audio = null) {
-            const box = document.getElementById('chatBox');
-            const div = document.createElement('div');
-            div.className = 'chat-msg';
-            
-            if (audio) {
-                div.innerHTML = `<b>${name}:</b> <audio controls src="${audio}" style="height:30px;"></audio>`;
-            } else {
-                div.innerHTML = `<b>${name}:</b> ${text}`;
-            }
-            
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
-        }
-
-        function sendMsg() {
-            const input = document.getElementById('msgInput');
-            const text = input.value.trim();
-            if (!text) return;
-            
-            addChat(myName, text);
-            broadcast({type: 'chat', name: myName, text});
-            input.value = '';
-        }
-
-        async function toggleVoice() {
-            const btn = document.getElementById('micBtn');
-            if (!mediaRecorder) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    
-                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(audioChunks, {type: 'audio/webm'});
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                            const base64 = reader.result;
-                            addChat(myName, null, base64);
-                            broadcast({type: 'chat', name: myName, audio: base64});
-                        };
-                        reader.readAsDataURL(blob);
-                        stream.getTracks().forEach(t => t.stop());
-                    };
-                    
-                    mediaRecorder.start();
-                    btn.classList.add('recording');
-                    setTimeout(() => {
-                        if (mediaRecorder.state === 'recording') {
-                            mediaRecorder.stop();
-                            btn.classList.remove('recording');
-                        }
-                    }, 5000); 
-                } catch(e) {
-                    showToast('Mikrofon izni gerekli!');
-                }
-            } else {
-                if (mediaRecorder.state === 'recording') {
-                    mediaRecorder.stop();
-                    btn.classList.remove('recording');
-                    mediaRecorder = null;
-                }
-            }
-        }
-
-        // ==================== YARDIMCI FONKSİYONLAR ====================
-        function isMyTurn() {
-            return gameState.players[gameState.currentPlayer]?.id === myId;
-        }
-
-        function getMyPlayer() {
-            return gameState.players.find(p => p.id === myId);
-        }
-
-        function isOkeyTile(tile) {
-            if (tile.isFake) return true; 
-            return tile.color === gameState.okeyTile.color && tile.num === gameState.okeyTile.num;
-        }
-
-        function colorName(c) {
-            const names = {red: 'Kırmızı', blue: 'Mavi', black: 'Siyah', yellow: 'Sarı'};
-            return names[c] || c;
-        }
-
-        function updateUI() {
-            renderPlayers();
-            updateTable();
-        }
-
-        function renderPlayers() {
-            const div = document.getElementById('players');
-            div.innerHTML = gameState.players.map((p, i) => `
-                <div class="player ${i === gameState.currentPlayer ? 'active' : ''} ${p.score >= 50 ? 'winner' : ''}">
-                    <div class="status ${p.online ? '' : 'offline'}"></div>
-                    <div class="avatar">${p.name[0]}</div>
-                    <div class="name">${p.name}</div>
-                    <div class="stats">${p.tiles?.length || 0} taş • ${p.score} puan</div>
-                </div>
-            `).join('');
-        }
-
-        function updateTable() {
-            if (!gameState.gosterge) return;
-            document.getElementById('gosterge').className = `pile indicator ${gameState.gosterge.color}`;
-            document.getElementById('gosterge').innerText = gameState.gosterge.num;
-            document.getElementById('okey').innerText = gameState.okeyTile.num;
-            document.getElementById('deckCount').innerText = gameState.deck.length;
-            updateDiscardView();
-            renderOpenPers();
-        }
-
-        function updateDiscardView() {
-            const slot = document.getElementById('discardLeft');
-            const last = gameState.discardPile[gameState.discardPile.length - 1];
-            if (last) {
-                slot.innerHTML = `<div class="tile ${last.color}" style="width:35px;height:50px;font-size:16px;">${last.isFake ? '' : last.num}</div>`;
-                document.getElementById('slotLeft').classList.add('active');
-            } else {
-                slot.innerHTML = '';
-                document.getElementById('slotLeft').classList.remove('active');
-            }
-        }
-
-        function renderOpenPers() {
-            const div = document.getElementById('openPers');
-            div.innerHTML = gameState.openPers.map(per => `
-                <div class="per-line">
-                    ${per.map(t => `
-                        <div class="tile ${t.color}">${t.isFake ? '★' : t.num}</div>
-                    `).join('')}
-                </div>
-            `).join('');
-        }
-
-        function renderHand() {
-            const rack = document.getElementById('rack');
-            rack.innerHTML = myHand.map((t, i) => `
-                <div class="tile ${t.color} ${selectedTiles.has(i) ? 'selected' : ''} ${isOkeyTile(t) ? 'okey-star' : ''}" 
-                     onclick="toggleSelect(${i})">
-                    ${t.isFake ? '' : t.num}
-                </div>
-            `).join('');
-        }
-
-        function toggleSelect(i) {
-            if (selectedTiles.has(i)) selectedTiles.delete(i);
-            else selectedTiles.add(i);
-            renderHand();
-        }
-
-        function sortByNumber() {
-            myHand.sort((a,b) => (a.isFake?1:0)-(b.isFake?1:0) || a.num-b.num);
-            renderHand();
-        }
-
-        function sortByColor() {
-            const order = {red:0, blue:1, black:2, yellow:3, fake:4};
-            myHand.sort((a,b) => order[a.color]-order[b.color] || a.num-b.num);
-            renderHand();
         }
 
         function sortSmart() {
-            sortByColor();
-            showToast('Akıllı sıralama uygulandı');
+            let tiles = myRackData.filter(t => t !== null);
+            let colorOrder = {red:1, blue:2, black:3, yellow:4, fake:5};
+            tiles.sort((a,b) => colorOrder[a.color]-colorOrder[b.color] || a.num-b.num);
+            myRackData.fill(null);
+            let insertIdx = 0;
+            for(let i = 0; i < tiles.length; i++) {
+                if(i > 0 && (tiles[i].color !== tiles[i-1].color || tiles[i].num - tiles[i-1].num > 1)) insertIdx++; 
+                if(insertIdx >= 28) insertIdx = 27; 
+                myRackData[insertIdx] = tiles[i]; insertIdx++;
+            }
+            renderRack(); toggleMenu();
         }
 
-        function showOpenPers() {
-            const div = document.getElementById('openPers');
-            div.style.display = div.style.display === 'none' ? 'flex' : 'none';
+        function sortTiles(type) {
+            let tiles = myRackData.filter(t => t !== null);
+            if(type === 'single') { let order = {red:1, blue:2, black:3, yellow:4, fake:5}; tiles.sort((a,b) => order[a.color]-order[b.color] || a.num-b.num); } 
+            else { tiles.sort((a,b) => a.num-b.num || a.color.localeCompare(b.color)); }
+            myRackData.fill(null); tiles.forEach((t, i) => myRackData[i] = t); renderRack(); 
         }
 
-        function copyRoomCode() {
-            navigator.clipboard.writeText(roomCode);
-            showToast('Kod kopyalandı: ' + roomCode);
+        // ==================== SOHBET VE SES YÖNETİMİ ====================
+        function addSysChat(text) {
+            let container = document.getElementById('sysChat');
+            let div = document.createElement('div'); div.className = 'sys-chat-line'; div.innerText = text;
+            container.appendChild(div); setTimeout(() => { if(div.parentNode) div.remove(); }, 4000); 
         }
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg;
-            t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 3000);
+        function addPlayerChat(name, text, audioBase64 = null) {
+            let container = document.getElementById('playerChat'); let div = document.createElement('div'); div.className = 'p-chat-line';
+            if(audioBase64) div.innerHTML = `<b style="color:var(--primary)">${name}:</b> <audio controls autoplay src="${audioBase64}"></audio>`;
+            else div.innerHTML = `<b style="color:var(--primary)">${name}:</b> ${text}`;
+            container.appendChild(div); while(container.children.length > 3) container.removeChild(container.firstChild); 
         }
 
-        function toggleMenu() {
-            const r = confirm('Odanız: ' + roomCode + '\n\nYeniden başlatmak ister misiniz?');
-            if (r) location.reload();
+        function sendMsg() {
+            let inp = document.getElementById('msgInput'); if(!inp.value.trim()) return;
+            addPlayerChat('Ben', inp.value); broadcast({type: 'chat', name: myName, text: inp.value}); inp.value = '';
         }
-        // Initialize PWA Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
+
+        async function toggleVoice() {
+            let btn = document.getElementById('micBtn');
+            if(!mediaRecorder) {
+                try {
+                    let stream = await navigator.mediaDevices.getUserMedia({audio: true});
+                    let options = {}; 
+                    if(MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options = { mimeType: 'audio/webm;codecs=opus' };
+                    else if(MediaRecorder.isTypeSupported('audio/mp4;codecs=mp4a.40.2')) options = { mimeType: 'audio/mp4;codecs=mp4a.40.2' };
+                    else if(MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) options = { mimeType: 'audio/ogg;codecs=opus' };
+                    
+                    mediaRecorder = new MediaRecorder(stream, options); audioChunks = [];
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.onstop = () => {
+                        let blob = new Blob(audioChunks, {type: options.mimeType || 'audio/mp4'});
+                        let reader = new FileReader();
+                        reader.onloadend = () => { let b64 = reader.result; addPlayerChat('Ben', '🎤', b64); broadcast({type:'chat', name: myName, text: '🎤', audio: b64}); };
+                        reader.readAsDataURL(blob); stream.getTracks().forEach(t => t.stop());
+                    };
+                    mediaRecorder.start(); btn.classList.add('recording');
+                    setTimeout(() => { if(mediaRecorder && mediaRecorder.state === 'recording') { mediaRecorder.stop(); btn.classList.remove('recording'); mediaRecorder = null; } }, 4000);
+                } catch(e) { addSysChat('Mikrofon izni reddedildi!'); }
+            } else { if(mediaRecorder.state === 'recording') { mediaRecorder.stop(); btn.classList.remove('recording'); mediaRecorder = null; } }
         }
+
+        // ==================== AĞ BAĞLANTISI ====================
+        function init() {
+            peer = new Peer();
+            peer.on('open', id => { myId = id; document.getElementById('connBar').className = 'connection-bar online'; });
+            peer.on('disconnected', () => document.getElementById('connBar').className = 'connection-bar connecting');
+            peer.on('connection', conn => {
+                conn.on('open', () => { connections.set(conn.peer, conn); conn.on('data', data => handleData(data, conn.peer)); });
+                conn.on('close', () => {
+                    connections.delete(conn.peer);
+                    if (isHost) { const p = gameState.players.find(x => x.id === conn.peer); if (p) { p.online = false; broadcast({type: 'stateUpdate', state: gameState}); addSysChat(p.name + ' ayrıldı.'); } }
+                });
+            });
+
+            let r0 = document.getElementById('row0'), r1 = document.getElementById('row1');
+            for(let i=0; i<14; i++) r0.innerHTML += `<div class="slot" data-idx="${i}"></div>`;
+            for(let i=14; i<28; i++) r1.innerHTML += `<div class="slot" data-idx="${i}"></div>`;
+        }
+        init();
+
+        function createRoom() {
+            myName = document.getElementById('playerName').value || 'Kurucu'; isHost = true; roomCode = myId;
+            gameState.startScore = parseInt(document.getElementById('startScoreInput').value) || 20;
+            gameState.players.push({id: myId, name: myName, tileCount: 0, discardPile: [], score: gameState.startScore, hasShown: false, isDouble: false});
+            document.getElementById('loginModal').classList.remove('active'); document.getElementById('tableArea').style.display = 'grid'; document.getElementById('bottomArea').style.display = 'flex';
+            addSysChat('Oda kuruldu, kod kopyalandı.'); navigator.clipboard.writeText(roomCode);
+            setTimeout(() => { if(gameState.players.length >= 1) initiateRound(); }, 1500); 
+        }
+
+        function joinRoom() {
+            myName = document.getElementById('playerName').value || 'Oyuncu'; roomCode = document.getElementById('roomInput').value; if (!roomCode) return;
+            const conn = peer.connect(roomCode, {reliable: true});
+            conn.on('open', () => {
+                connections.set(roomCode, conn); conn.send({type: 'join', name: myName, id: myId}); conn.on('data', data => handleData(data, roomCode));
+                document.getElementById('loginModal').classList.remove('active'); document.getElementById('tableArea').style.display = 'grid'; document.getElementById('bottomArea').style.display = 'flex';
+                addSysChat('Odaya bağlanıldı.');
+            });
+        }
+
+        function broadcast(msg) { connections.forEach(c => { if(c.open) c.send(msg); }); }
+
+        function handleData(data, from) {
+            if(data.type === 'join' && isHost) {
+                if(gameState.players.length >= 4) return;
+                let existing = gameState.players.find(p => p.id === data.id);
+                if(existing) { existing.online = true; existing.name = data.name; } 
+                else { gameState.players.push({id: data.id, name: data.name, tileCount: 0, discardPile: [], score: gameState.startScore, hasShown: false, isDouble: false}); }
+                connections.get(data.id).send({type: 'fullState', state: gameState, yourId: data.id}); broadcast({type: 'stateUpdate', state: gameState}); addSysChat(data.name + ' katıldı.'); updateTableUI();
+            }
+            else if(data.type === 'fullState') { gameState = data.state; myId = data.yourId; document.getElementById('startScoreInput').value = gameState.startScore; updateTableUI(); if(gameState.started) { let me = gameState.players.find(p => p.id === myId); if(me && me.myHandHidden) { loadHandToRack(me.myHandHidden); } } }
+            else if(data.type === 'stateUpdate') { gameState = data.state; document.getElementById('startScoreInput').value = gameState.startScore; updateTableUI(); if(isHost) { connections.forEach((c, id) => { if(id !== from && c.open) c.send({type: 'stateUpdate', state: gameState}); }); } }
+            else if(data.type === 'yourHand') { loadHandToRack(data.hand); }
+            else if(data.type === 'chat') { addPlayerChat(data.name, data.text, data.audio); if(isHost) { connections.forEach((c, id) => { if(id !== from && c.open) c.send(data); }); } }
+            else if(data.type === 'action' && isHost) { processAction(data.action, data.pid, data.payload); }
+            else if(data.type === 'kicked') { alert('Odadan atıldınız!'); location.reload(); }
+            else if(data.type === 'sync_dice') { syncDiceAnimation(data.result); }
+            else if(data.type === 'game_draw') { showDraw(); }
+        }
+
+        // ==================== ZAR VE OYUN BAŞLATMA ====================
+        function getDiceSVG(num) {
+            let dots = {
+                1: '<circle cx="50" cy="50" r="10" fill="#222"/>',
+                2: '<circle cx="25" cy="25" r="10" fill="#222"/><circle cx="75" cy="75" r="10" fill="#222"/>',
+                3: '<circle cx="25" cy="25" r="10" fill="#222"/><circle cx="50" cy="50" r="10" fill="#222"/><circle cx="75" cy="75" r="10" fill="#222"/>',
+                4: '<circle cx="25" cy="25" r="10" fill="#222"/><circle cx="75" cy="25" r="10" fill="#222"/><circle cx="25" cy="75" r="10" fill="#222"/><circle cx="75" cy="75" r="10" fill="#222"/>',
+                5: '<circle cx="25" cy="25" r="10" fill="#222"/><circle cx="75" cy="25" r="10" fill="#222"/><circle cx="50" cy="50" r="10" fill="#222"/><circle cx="25" cy="75" r="10" fill="#222"/><circle cx="75" cy="75" r="10" fill="#222"/>',
+                6: '<circle cx="25" cy="20" r="10" fill="#222"/><circle cx="75" cy="20" r="10" fill="#222"/><circle cx="25" cy="50" r="10" fill="#222"/><circle cx="75" cy="50" r="10" fill="#222"/><circle cx="25" cy="80" r="10" fill="#222"/><circle cx="75" cy="80" r="10" fill="#222"/>'
+            };
+            return `<svg width="70" height="70" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));"><rect width="100" height="100" rx="20" fill="#f0eadd" stroke="#ccc" stroke-width="2"/><g>${dots[num] || dots[1]}</g></svg>`;
+        }
+
+        function initiateRound() {
+            if(!isHost) return;
+            gameState.started = false; gameState.centerZoneVisible = false; diceRollCount = 0;
+            gameState.dealerIndex = (gameState.round - 1) % gameState.players.length;
+            myRackData.fill(null); renderRack(); // Yeni el için ıstakayı tamamen sıfırla
+            broadcast({type: 'stateUpdate', state: gameState}); updateTableUI();
+        }
+
+        function requestRollDice() {
+            if(!gameState.players[gameState.dealerIndex] || gameState.players[gameState.dealerIndex].id !== myId) return addSysChat('Sadece dağıtıcı zar atabilir!');
+            let result = Math.floor(Math.random() * 6) + 1; diceRollCount++;
+            syncDiceAnimation(result); broadcast({type: 'sync_dice', result: result});
+            if(diceRollCount === 2 && isHost) { setTimeout(() => startGame(), 3000); } else if(diceRollCount === 2 && !isHost) { connections.get(roomCode).send({type: 'action', action: 'START_GAME'}); }
+        }
+
+        function syncDiceAnimation(result) {
+            let icon = document.getElementById('diceIcon'), info = document.getElementById('diceInfo'); icon.classList.add('rolling');
+            setTimeout(() => { icon.classList.remove('rolling'); icon.innerHTML = getDiceSVG(result); info.innerHTML = ''; }, 600);
+        }
+
+        function startGame() {
+            if(!isHost) return;
+            gameState.deck = [];
+            for(let c of COLORS) { for(let n=1; n<=13; n++) { gameState.deck.push({color: c, num: n}); gameState.deck.push({color: c, num: n}); } }
+            gameState.deck.push({color: 'fake', isFake: true}); gameState.deck.push({color: 'fake', isFake: true});
+            gameState.deck.sort(() => Math.random() - 0.5); 
+
+            let g = gameState.deck.pop(); gameState.gosterge = g;
+            gameState.okeyTile = { color: g.color, num: g.num === 13 ? 1 : g.num + 1 };
+            
+            gameState.currentPlayer = (gameState.dealerIndex + 1) % gameState.players.length;
+            gameState.players.forEach((p, i) => {
+                let count = (i === gameState.currentPlayer) ? 15 : 14;
+                p.tileCount = count; p.discardPile = []; p.hasShown = false; p.isDouble = false;
+                let hand = []; for(let j=0; j<count; j++) hand.push(gameState.deck.pop());
+                if (p.id === myId) loadHandToRack(hand); else { p.myHandHidden = hand; let c = connections.get(p.id); if(c) c.send({type: 'yourHand', hand}); }
+            });
+
+            gameState.started = true; gameState.centerZoneVisible = true;
+            broadcast({type: 'stateUpdate', state: gameState}); updateTableUI();
+        }
+
+        function processAction(action, pid, payload) {
+            let pIndex = gameState.players.findIndex(x => x.id === pid); let p = gameState.players[pIndex];
+            if (action === 'START_GAME') { startGame(); return; }
+            if(!p) return;
+
+            if (action === 'DRAW_DECK' && gameState.deck.length > 0) {
+                let t = gameState.deck.pop(); p.tileCount++;
+                if (pid === myId) addTileToRack(t); else { p.myHandHidden.push(t); connections.get(pid).send({type: 'yourHand', hand: [t]}); }
+                checkDrawEnd();
+            }
+            else if (action === 'DRAW_DISCARD') {
+                let leftIdx = (pIndex + gameState.players.length - 1) % gameState.players.length; let leftPlayer = gameState.players[leftIdx];
+                if(leftPlayer && leftPlayer.discardPile.length > 0) {
+                    let t = leftPlayer.discardPile.pop(); p.tileCount++;
+                    if (pid === myId) addTileToRack(t); else { p.myHandHidden.push(t); connections.get(pid).send({type: 'yourHand', hand: [t]}); }
+                }
+            }
+            else if (action === 'DISCARD') {
+                p.tileCount--; p.discardPile.push(payload.tile);
+                if(pid !== myId) { p.myHandHidden = p.myHandHidden.filter(t => t.color !== payload.tile.color || t.num !== payload.tile.num); }
+                gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
+            }
+            else if (action === 'SHOW_GOSTERGE') {
+                p.hasShown = true;
+                gameState.players.forEach(op => { if(op.id !== pid) op.score -= 1; });
+                addSysChat(`${p.name} gösterge yaptı! Herkesten 1 puan düştü.`);
+            }
+            else if (action === 'KICK_PLAYER') { kickPlayerAction(payload.targetId); return; }
+            
+            broadcast({type: 'stateUpdate', state: gameState}); updateTableUI();
+        }
+
+        function checkDrawEnd() {
+            if(isHost && gameState.deck.length === 0) {
+                broadcast({type: 'game_draw'}); showDraw();
+            }
+        }
+
+        // ==================== OYUNCU HAMLELERİ ====================
+        function isMyTurn() { return gameState.players[gameState.currentPlayer]?.id === myId; }
+        function getMyIndex() { return gameState.players.findIndex(p => p.id === myId); }
+        function getMyTileCount() { return myRackData.filter(t => t !== null).length; }
+
+        function drawFromDeck() {
+            if(!isMyTurn()) return addSysChat('Sıra sizde değil!');
+            if(hasDrawn) return addSysChat('Zaten çektiniz!');
+            hasDrawn = true; uselessTileIndex = -1;
+            if(isHost) processAction('DRAW_DECK', myId); else connections.get(roomCode).send({type: 'action', action: 'DRAW_DECK', pid: myId});
+        }
+
+        function drawFromDiscard() {
+            if(!isMyTurn()) return addSysChat('Sıra sizde değil!');
+            if(hasDrawn) return addSysChat('Zaten çektiniz!');
+            
+            let prevIdx = (getMyIndex() + gameState.players.length - 1) % gameState.players.length;
+            if(gameState.players[prevIdx]?.discardPile.length === 0) return;
+            
+            hasDrawn = true; uselessTileIndex = -1;
+            if(isHost) processAction('DRAW_DISCARD', myId); else connections.get(roomCode).send({type: 'action', action: 'DRAW_DISCARD', pid: myId});
+        }
+
+        function dropToMyDiscard() {
+            if(!isMyTurn()) return addSysChat('Sıra sizde değil!');
+            if(!hasDrawn && getMyTileCount() < 15) return addSysChat('Önce taş çek!');
+
+            let tileObj = null, fromIndex = -1;
+            if(selectedIndices.size === 0 && draggedEl) { fromIndex = parseInt(draggedEl.dataset.idx); tileObj = myRackData[fromIndex]; } 
+            else if(selectedIndices.size === 1) { fromIndex = Array.from(selectedIndices)[0]; tileObj = myRackData[fromIndex]; selectedIndices.clear(); } 
+            else return addSysChat('Atmak için 1 taş sürükleyin veya seçin.');
+
+            if(fromIndex !== -1 && tileObj) { myRackData[fromIndex] = null; executeDiscard(tileObj); }
+        }
+
+        function executeDiscard(tileObj) {
+            uselessTileIndex = -1; renderRack(); hasDrawn = false;
+            if(isHost) processAction('DISCARD', myId, {tile: tileObj}); else connections.get(roomCode).send({type: 'action', action: 'DISCARD', pid: myId, payload: {tile: tileObj}});
+        }
+
+        function toggleDoubleMode() {
+            isDoubleMode = !isDoubleMode; let btn = document.getElementById('btnDouble');
+            if(isDoubleMode) { btn.classList.add('active'); btn.innerText = '👥 Çifte Git (AÇIK)'; }
+            else { btn.classList.remove('active'); btn.innerText = '👥 Çifte Git'; }
+        }
+
+        // ==================== BİTİŞ VE GÖSTERGE SÜRÜKLEME ====================
+        function handleCenterDrop(tileObj, fromIndex) {
+            if(!isMyTurn() || getMyTileCount() !== 15) return false;
+            let me = gameState.players.find(p => p.id === myId);
+
+            if(!hasDrawn && me.discardPile.length === 0 && !me.hasShown) {
+                if(tileObj.color === gameState.gosterge.color && tileObj.num === gameState.gosterge.num && !tileObj.isFake) {
+                    if(isHost) processAction('SHOW_GOSTERGE', myId); else connections.get(roomCode).send({type: 'action', action: 'SHOW_GOSTERGE', pid: myId});
+                    return false; 
+                }
+            }
+
+            if(hasDrawn || me.discardPile.length === 0) { 
+                let remainingTiles = myRackData.filter((t, i) => t !== null && i !== fromIndex);
+                if(isValidHand(remainingTiles, isDoubleMode)) {
+                    myRackData[fromIndex] = null; 
+                    let type = isDoubleMode ? 'double' : 'normal'; 
+                    endGame(myId, type, tileObj, myRackData); 
+                    return true; 
+                } else {
+                    addSysChat('Eliniz bitmek için kurallara uygun değil!');
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        function isValidHand(tiles, isDouble) {
+            if(tiles.length !== 14) return false;
+            if(isDouble) {
+                let pairs = 0, used = new Set();
+                for(let i=0; i<14; i++){
+                    if(used.has(i)) continue;
+                    for(let j=i+1; j<14; j++){
+                        if(!used.has(j) && (tiles[i].isFake === tiles[j].isFake) && tiles[i].num === tiles[j].num && tiles[i].color === tiles[j].color) {
+                            pairs++; used.add(i); used.add(j); break;
+                        }
+                    }
+                }
+                return pairs === 7;
+            } else { return true; }
+        }
+
+        function endGame(winnerId, type, finishTile, winningHand) {
+            let isOkeyFinish = finishTile && !finishTile.isFake && gameState.okeyTile && finishTile.color === gameState.okeyTile.color && finishTile.num === gameState.okeyTile.num;
+            if(isHost) {
+                let winner = gameState.players.find(p => p.id === winnerId);
+                let multiplier = isOkeyFinish ? 2 : 1;
+                gameState.players.forEach(p => { 
+                    if(p.id !== winnerId) { 
+                        let penalty = 2; 
+                        if(type === 'double') penalty = 4; 
+                        if(type === 'normal' && p.isDouble) penalty = 4; 
+                        penalty *= multiplier; 
+                        p.score = p.score - penalty; 
+                    } 
+                });
+                broadcast({type: 'game_end', winner: winnerId, type: type, scores: gameState.players, isOkeyFinish: isOkeyFinish, winningHand: winningHand}); 
+                showGameOver(winnerId, type, gameState.players, isOkeyFinish, winningHand);
+            } else { connections.get(roomCode).send({type: 'action', action: 'REQUEST_END', pid: myId, payload: {type: type, finishTile: finishTile, winningHand: winningHand}}); }
+        }
+
+        function showGameOver(winnerId, type, players, isOkeyFinish, winningHand) {
+            document.getElementById('gameOverModal').classList.add('active'); let winner = players.find(p => p.id === winnerId);
+            let finishStr = `${winner.name} Kazandı! `;
+            if(type === 'double') finishStr += '(Çiftten) ';
+            if(isOkeyFinish) finishStr += 'Okey Attı! 🚀';
+            document.getElementById('finishReason').innerText = finishStr; document.getElementById('nextRoundBtn').style.display = isHost ? 'block' : 'none';
+            
+            let rackHTML = '';
+            if(winningHand && winningHand.length === 28) {
+                let row0 = winningHand.slice(0,14).map(t => t ? `<div class="mini-slot"><div class="tile ${t.color} ${t.isFake?'fake':''}">${t.isFake?'':t.num}</div></div>` : '<div class="mini-slot"></div>').join('');
+                let row1 = winningHand.slice(14,28).map(t => t ? `<div class="mini-slot"><div class="tile ${t.color} ${t.isFake?'fake':''}">${t.isFake?'':t.num}</div></div>` : '<div class="mini-slot"></div>').join('');
+                rackHTML = `<div class="winner-rack"><div class="winner-rack-row">${row0}</div><div class="winner-rack-row">${row1}</div></div>`;
+            }
+            document.getElementById('winnerRackContainer').innerHTML = rackHTML;
+            
+            let sorted = [...players].sort((a,b) => b.score - a.score);
+            document.getElementById('scoreBoard').innerHTML = sorted.map(p => `<div class="score-row ${p.id === winnerId ? 'winner' : ''}"><span>${p.name} ${p.id === winnerId ? '👑' : ''}</span><span style="font-weight:bold; color:var(--accent);">${p.score}</span></div>`).join('');
+            confetti({particleCount: 150, spread: 70, origin: {y: 0.6}});
+        }
+
+        function showDraw() {
+            document.getElementById('gameOverModal').classList.add('active');
+            document.getElementById('finishReason').innerText = `Yerde çekilecek taş kalmadı. El berabere bitti!`;
+            document.getElementById('winnerRackContainer').innerHTML = '';
+            document.getElementById('nextRoundBtn').style.display = isHost ? 'block' : 'none';
+            let sorted = [...gameState.players].sort((a,b) => b.score - a.score);
+            document.getElementById('scoreBoard').innerHTML = sorted.map(p => `<div class="score-row"><span>${p.name}</span><span style="font-weight:bold; color:var(--accent);">${p.score}</span></div>`).join('');
+        }
+
+        function newRound() { document.getElementById('gameOverModal').classList.remove('active'); if(isHost) { gameState.round++; initiateRound(); } }
+
+        function requestKick(targetId) { if(isHost && targetId !== myId && confirm('Bu oyuncuyu atmak istiyor musunuz?')) kickPlayerAction(targetId); }
+        function kickPlayerAction(targetId) {
+            let pIdx = gameState.players.findIndex(p => p.id === targetId);
+            if(pIdx > -1) {
+                gameState.players.splice(pIdx, 1);
+                let conn = connections.get(targetId); if(conn) { conn.send({type: 'kicked'}); conn.close(); connections.delete(targetId); }
+                if(gameState.currentPlayer >= gameState.players.length) gameState.currentPlayer = 0;
+                broadcast({type: 'stateUpdate', state: gameState}); addSysChat('Oyuncu atıldı.'); updateTableUI();
+            }
+        }
+
+        // ==================== UI YÖNETİMİ VE TAM GÖRSEL YERLEŞİM ====================
+        function updateTableUI() {
+            let diceArea = document.getElementById('diceArea'), centerZone = document.getElementById('centerZone');
+            if(!gameState.started && gameState.players.length > 0) {
+                diceArea.classList.add('active'); centerZone.style.display = 'none';
+                let info = document.getElementById('diceInfo');
+                if(gameState.players[gameState.dealerIndex]?.id === myId) { document.getElementById('diceIcon').style.pointerEvents = 'auto'; if(diceRollCount === 0) info.innerText = ""; } 
+                else { document.getElementById('diceIcon').style.pointerEvents = 'none'; info.innerText = `Dağıtıcı bekleniyor: ${gameState.players[gameState.dealerIndex]?.name}`; }
+            } else { diceArea.classList.remove('active'); if(gameState.centerZoneVisible) centerZone.style.display = 'flex'; }
+
+            if(!gameState.started) return;
+            
+            ['pos-bottom', 'pos-right', 'pos-top', 'pos-left', 'pile-bottom', 'pile-right', 'pile-top', 'pile-left'].forEach(id => {
+                let el = document.getElementById(id); if(el) el.innerHTML = '';
+            });
+
+            // Gösterge Görseli
+            let gp = document.getElementById('gostergePile'); gp.className = `pile indicator ${gameState.gosterge.color}`; 
+            gp.innerHTML = `<div class="tile ${gameState.gosterge.color}" style="position:static; width:100%; height:100%; font-size:24px;">${gameState.gosterge.num}</div>`;
+            document.getElementById('deckCount').innerText = gameState.deck.length;
+
+            let myIdx = getMyIndex(); if(myIdx === -1) return;
+
+            // 10 Saniye AFK Sayacı
+            if(turnTimerInterval) { clearInterval(turnTimerInterval); turnTimerInterval = null; }
+            if(gameState.started) {
+                let activePlayer = gameState.players[gameState.currentPlayer];
+                if(activePlayer) {
+                    let timeLeft = 10;
+                    turnTimerInterval = setInterval(() => {
+                        timeLeft--;
+                        let timerEl = document.getElementById('turnTimer_' + activePlayer.id);
+                        if(timerEl) timerEl.innerText = timeLeft;
+                        if(timeLeft <= 0) {
+                            clearInterval(turnTimerInterval);
+                            if(timerEl) timerEl.style.display = 'none';
+                            if(isHost && activePlayer.id !== myId) {
+                                let kickBtn = document.getElementById('kickBtn_' + activePlayer.id);
+                                if(kickBtn) kickBtn.style.display = 'block';
+                            }
+                        }
+                    }, 1000);
+                }
+            }
+
+            let myPlayer = gameState.players[myIdx];
+            
+            // KENDİ AVATARIM (Alt Orta - İsim yazacak)
+            let myTimerHTML = (myIdx === gameState.currentPlayer) ? `<div class="turn-timer" id="turnTimer_${myPlayer.id}">10</div>` : '';
+            document.getElementById('pos-bottom').innerHTML = `<div class="avatar-box ${gameState.currentPlayer === myIdx ? 'active':''}">${myTimerHTML}<div class="name">${myPlayer.name}</div><div class="score">Puan: ${myPlayer.score}</div></div>`;
+
+            // KENDİ ATMA ALANIM (Alt Sağ - Font 24px)
+            let myTopDiscard = myPlayer.discardPile[myPlayer.discardPile.length-1];
+            let myDiscardClasses = 'discard-pile my-discard-zone';
+            if(gameState.currentPlayer === myIdx) myDiscardClasses += ' active';
+            let myDiscardContent = myTopDiscard ? `<div class="tile ${myTopDiscard.color} ${myTopDiscard.isFake?'fake':''}" style="font-size:24px; position:static; width:100%; height:100%;">${myTopDiscard.isFake?'':myTopDiscard.num}</div>` : 'TAŞI<br>AT';
+            document.getElementById('pile-bottom').innerHTML = `<div class="${myDiscardClasses}" id="myDiscardArea">${myDiscardContent}</div>`;
+
+            let opponentsCount = gameState.players.length - 1;
+            let layoutPositions = [];
+            let pilePositions = [];
+            
+            if(opponentsCount === 1) { layoutPositions = ['pos-top']; pilePositions = ['pile-top']; }
+            else if(opponentsCount === 2) { layoutPositions = ['pos-right', 'pos-top']; pilePositions = ['pile-right', 'pile-top']; } 
+            else { layoutPositions = ['pos-right', 'pos-top', 'pos-left']; pilePositions = ['pile-right', 'pile-top', 'pile-left']; } 
+
+            for(let i=1; i<=opponentsCount; i++) {
+                let pIdx = (myIdx + i) % gameState.players.length; let p = gameState.players[pIdx];
+                let topDiscard = p.discardPile[p.discardPile.length-1];
+                let discardHTML = topDiscard ? `<div class="tile ${topDiscard.color} ${topDiscard.isFake?'fake':''}" style="font-size:24px; position:static; width:100%; height:100%;">${topDiscard.isFake?'':topDiscard.num}</div>` : '';
+                
+                let isPrevPlayer = pIdx === (myIdx + gameState.players.length - 1) % gameState.players.length;
+                let canDrawClass = (isMyTurn() && !hasDrawn && isPrevPlayer && topDiscard) ? 'can-draw' : '';
+                let onClickStr = canDrawClass ? `onclick="drawFromDiscard()"` : '';
+                
+                let timerHTML = (pIdx === gameState.currentPlayer) ? `<div class="turn-timer" id="turnTimer_${p.id}">10</div>` : '';
+                let kickBtnHTML = (isHost && p.id !== myId) ? `<button class="kick-btn" id="kickBtn_${p.id}" onclick="requestKick('${p.id}')" style="display:none;">X</button>` : '';
+
+                document.getElementById(layoutPositions[i-1]).innerHTML = `<div class="avatar-box ${gameState.currentPlayer === pIdx ? 'active':''}">${timerHTML}${kickBtnHTML}<div class="name">${p.name}</div><div class="score">Puan: ${p.score}</div></div>`;
+                document.getElementById(pilePositions[i-1]).innerHTML = `<div class="discard-pile ${canDrawClass}" ${onClickStr}>${discardHTML}</div>`;
+            }
+        }
+
+        function loadHandToRack(hand) { 
+            myRackData.fill(null); 
+            let idx = 0;
+            hand.forEach(t => { myRackData[idx++] = t; }); 
+            renderRack(); 
+        }
+        
+        function addTileToRack(t) { let idx = myRackData.indexOf(null); if(idx !== -1) myRackData[idx] = t; renderRack(); }
+
+        function renderRack() {
+            document.querySelectorAll('.slot').forEach((slot, i) => {
+                slot.innerHTML = ''; let tile = myRackData[i];
+                if(tile) {
+                    let div = document.createElement('div');
+                    let classes = `tile ${tile.color} ${tile.isFake ? 'fake' : ''} ${selectedIndices.has(i) ? 'selected' : ''}`;
+                    if(uselessTileIndex === i) classes += ' useless'; 
+                    div.className = classes; div.innerText = tile.isFake ? '' : tile.num; div.dataset.idx = i;
+                    div.onpointerdown = handleDragStart; div.onclick = () => { if(selectedIndices.has(i)) selectedIndices.delete(i); else selectedIndices.add(i); renderRack(); };
+                    slot.appendChild(div);
+                }
+            });
+        }
+
+        let draggedEl = null, ghostEl = null, startIndex = -1, shiftX, shiftY;
+        function handleDragStart(e) {
+            e.preventDefault(); draggedEl = e.currentTarget; startIndex = parseInt(draggedEl.dataset.idx);
+            let rect = draggedEl.getBoundingClientRect(); shiftX = e.clientX - rect.left; shiftY = e.clientY - rect.top;
+            ghostEl = draggedEl.cloneNode(true); ghostEl.className += ' ghost-tile'; ghostEl.style.width = rect.width+'px'; ghostEl.style.height = rect.height+'px';
+            document.body.appendChild(ghostEl); moveAt(e.pageX || e.touches[0].pageX, e.pageY || e.touches[0].pageY); draggedEl.style.opacity = '0.3';
+            document.addEventListener('pointermove', handleDragMove); document.addEventListener('pointerup', handleDragEnd);
+        }
+        function handleDragMove(e) { 
+            if(ghostEl) {
+                moveAt(e.pageX || e.touches[0].pageX, e.pageY || e.touches[0].pageY); 
+                let clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX), clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+                let elemBelow = document.elementFromPoint(clientX, clientY);
+                if(elemBelow && elemBelow.closest('#gostergePile')) document.getElementById('gostergePile').classList.add('dropzone');
+                else document.getElementById('gostergePile').classList.remove('dropzone');
+            }
+        }
+        function moveAt(px, py) { ghostEl.style.left = px - shiftX + 'px'; ghostEl.style.top = py - shiftY + 'px'; }
+        function handleDragEnd(e) {
+            document.removeEventListener('pointermove', handleDragMove); document.removeEventListener('pointerup', handleDragEnd);
+            if(!ghostEl) return;
+            ghostEl.hidden = true; 
+            let clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX), clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+            let elemBelow = document.elementFromPoint(clientX, clientY); ghostEl.hidden = false;
+            ghostEl.remove(); ghostEl = null; if(draggedEl) draggedEl.style.opacity = '1';
+            document.getElementById('gostergePile').classList.remove('dropzone');
+            if(!elemBelow) return renderRack();
+
+            if(elemBelow.closest('#gostergePile') || elemBelow.closest('.center-zone')) {
+                let success = handleCenterDrop(myRackData[startIndex], startIndex);
+                if(!success) renderRack();
+                return;
+            }
+
+            if(elemBelow.closest('.my-discard-zone')) { dropToMyDiscard(); return; }
+
+            let targetSlot = elemBelow.closest('.slot');
+            if(targetSlot) {
+                let targetIdx = parseInt(targetSlot.dataset.idx); if(startIndex === targetIdx) return;
+                let movingTile = myRackData[startIndex]; myRackData[startIndex] = null;
+                if(myRackData[targetIdx] === null) { myRackData[targetIdx] = movingTile; } 
+                else {
+                    let emptyIdx = -1; for(let i = targetIdx; i < 28; i++) { if(myRackData[i] === null) { emptyIdx = i; break; } }
+                    if(emptyIdx !== -1) { for(let i = emptyIdx; i > targetIdx; i--) { myRackData[i] = myRackData[i-1]; } myRackData[targetIdx] = movingTile; } 
+                    else { myRackData[startIndex] = movingTile; }
+                }
+                uselessTileIndex = -1; renderRack();
+            } else renderRack();
+        }
+
+        peer.on('connection', conn => {
+            conn.on('data', data => {
+                if (data.type === 'action' && data.action === 'REQUEST_END' && isHost) { endGame(data.pid, data.payload.type, data.payload.finishTile, data.payload.winningHand); }
+                if (data.type === 'game_end') { showGameOver(data.winner, data.type, data.scores, data.isOkeyFinish, data.winningHand); }
+                if (data.type === 'sync_dice') { syncDiceAnimation(data.result); }
+                if (data.type === 'game_draw') { showDraw(); }
+            });
+        });
     </script>
 </body>
 </html>
