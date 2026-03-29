@@ -1,10 +1,10 @@
 {
   "name": "Alptekin Okey Pro",
   "short_name": "Okey Pro",
-  "description": "Profesyonel Okey Oyunu - Çevrimiçi Çok Oyunculu",
+  "description": "Profesyonel Okey Oyunu",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "landscape",
+  "orientation": "any",
   "background_color": "#1a1a2e",
   "theme_color": "#e94560",
   "icons": [
