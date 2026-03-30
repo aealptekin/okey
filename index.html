@@ -437,7 +437,7 @@
                 console.log("⚡ Host olarak aksiyon işleniyor:", data.action); 
                 processAction(data.action, data.pid, data.payload); 
             }
-            else if(data.type === 'game_end') { showGameOver(data.winner, data.type, data.scores, data.isOkeyFinish, data.winningHand); }
+            else if(data.type === 'game_end') { showGameOver(data.winner, data.winType, data.scores, data.isOkeyFinish, data.winningHand); }
             else if(data.type === 'kicked') { alert('Odadan atıldınız!'); location.reload(); }
             else if(data.type === 'sync_dice') { syncDiceAnimation(data.result); }
             else if(data.type === 'game_draw') { showDraw(); }
@@ -926,7 +926,7 @@
                 broadcast({
                     type: 'game_end',
                     winner: winnerId,
-                    type: type,
+                    winType: type, // <--- GÜNCELLENEN KISIM BURASI
                     scores: gameState.players,
                     isOkeyFinish: isOkeyFinish,
                     winningHand: winningHand
